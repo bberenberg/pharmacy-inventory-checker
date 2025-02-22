@@ -42,7 +42,7 @@ const __dirname = path.dirname(__filename);
 // Register static file handling first
 fastify.register(fastifyStatic, {
   root: path.join(__dirname, "public"),
-  prefix: "/", 
+  prefix: "/",
 });
 
 // Then register other plugins and routes
@@ -88,6 +88,8 @@ async function getSignedUrl() {
 // Store for pending call prompts
 const pendingCallPrompts = new Map();
 
+
+
 // Modified outbound-call route
 fastify.post("/outbound-call", async (request, reply) => {
   const { number, prompt, first_message } = request.body;
@@ -99,7 +101,7 @@ fastify.post("/outbound-call", async (request, reply) => {
   try {
     // Get the base URL from environment or request
     const baseUrl = PUBLIC_URL || `https://${request.headers.host}`;
-    
+
     // Make the call without prompts in URL
     const call = await twilioClient.calls.create({
       to: number,
@@ -173,37 +175,37 @@ function fetchConversationWithRetry(conversationId, attempts = 10, fixedDelay = 
         }
       }
     )
-    .then(response => response.json())
-    .then(data => {
-      attempt++;
-      allResults.push({ attempt, timestamp: new Date().toISOString(), data });
-      
-      // Check if we have meaningful data_collection_results
-      if (data?.analysis?.data_collection_results && 
-          Object.keys(data.analysis.data_collection_results).length > 0) {
-        console.log("[ElevenLabs] Found data collection results on attempt", attempt);
-        console.log("[ElevenLabs] Full analysis:", 
-          JSON.stringify({
-            call_successful: data.analysis.call_successful,
-            data_collection_results: data.analysis.data_collection_results
-          }, null, 2));
-        return { data, allResults };
-      }
-      
-      if (attempt >= attempts) {
-        // Return all results after all attempts are done
-        return { 
-          data: allResults[allResults.length - 1].data, // last result
-          allResults 
-        };
-      }
+      .then(response => response.json())
+      .then(data => {
+        attempt++;
+        allResults.push({ attempt, timestamp: new Date().toISOString(), data });
 
-      console.log(`[ElevenLabs] Making attempt ${attempt}/${attempts} in ${fixedDelay/1000} seconds... (No data collection results yet)`);
-      
-      return new Promise(resolve => {
-        setTimeout(() => resolve(tryFetch()), fixedDelay);
+        // Check if we have meaningful data_collection_results
+        if (data?.analysis?.data_collection_results &&
+          Object.keys(data.analysis.data_collection_results).length > 0) {
+          console.log("[ElevenLabs] Found data collection results on attempt", attempt);
+          console.log("[ElevenLabs] Full analysis:",
+            JSON.stringify({
+              call_successful: data.analysis.call_successful,
+              data_collection_results: data.analysis.data_collection_results
+            }, null, 2));
+          return { data, allResults };
+        }
+
+        if (attempt >= attempts) {
+          // Return all results after all attempts are done
+          return {
+            data: allResults[allResults.length - 1].data, // last result
+            allResults
+          };
+        }
+
+        console.log(`[ElevenLabs] Making attempt ${attempt}/${attempts} in ${fixedDelay / 1000} seconds... (No data collection results yet)`);
+
+        return new Promise(resolve => {
+          setTimeout(() => resolve(tryFetch()), fixedDelay);
+        });
       });
-    });
   }
 
   return tryFetch().catch(error => {
@@ -240,14 +242,14 @@ fastify.register(async fastifyInstance => {
 
             // Get stored prompts
             const storedPrompts = pendingCallPrompts.get(callSid);
-            
+
             if (storedPrompts) {
               // Inject prompts into conversation config
               customParameters = {
                 prompt: storedPrompts.prompt,
                 first_message: storedPrompts.first_message
               };
-              
+
               // Send initial configuration with prompt and first message
               const initialConfig = {
                 type: "conversation_initiation_client_data",
@@ -362,7 +364,14 @@ fastify.register(async fastifyInstance => {
           });
 
           elevenLabsWs.on("close", () => {
-            console.log("[ElevenLabs] Disconnected");
+            console.log("[ElevenLabs] Disconnected. Will attempt to end call.");
+
+            twilioClient.calls(callSid)
+              .update({
+                status: 'completed'
+              }).then(call => {
+                console.log("Call ended successfully", call);
+              });
           });
         } catch (error) {
           console.error("[ElevenLabs] Setup error:", error);
@@ -407,7 +416,7 @@ fastify.register(async fastifyInstance => {
               console.log(`[Twilio] Stream ${streamSid} ended`);
               if (elevenLabsConversationId) {
                 console.log("[ElevenLabs] Call ended - Conversation ID:", elevenLabsConversationId);
-                
+
                 fetchConversationWithRetry(elevenLabsConversationId)
                   .then(({ data, allResults }) => {
                     console.log("[ElevenLabs] All fetch attempts:", JSON.stringify(allResults, null, 2));

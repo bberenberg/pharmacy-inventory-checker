@@ -1,0 +1,19 @@
+/* Pharmacy table styles */
+.pharmacy-table {
+    table-layout: fixed;
+    width: 100%;
+}
+
+.pharmacy-table th:nth-child(1) { width: 25%; } /* Name */
+.pharmacy-table th:nth-child(2) { width: 35%; } /* Address */
+.pharmacy-table th:nth-child(3) { width: 12%; } /* Call Status */
+.pharmacy-table th:nth-child(4) { width: 12%; } /* Inventory Status */
+.pharmacy-table th:nth-child(5) { width: 10%; } /* Notes */
+.pharmacy-table th:nth-child(6) { width: 6%; }  /* Action */
+
+.pharmacy-table td {
+    padding: 8px;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+} 

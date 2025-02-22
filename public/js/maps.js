@@ -54,45 +54,13 @@ export function addMarker(location, title, label) {
 
 export function displayPharmacies(pharmacies) {
     const pharmacyListDiv = document.getElementById('pharmacyList');
+    const tableBody = document.getElementById('pharmacyTableBody');
     
-    pharmacyListDiv.innerHTML = `
-        <h2>Nearby Pharmacies</h2>
-        <style>
-            .pharmacy-table {
-                table-layout: fixed;
-                width: 100%;
-            }
-            .pharmacy-table th:nth-child(1) { width: 25%; } /* Name */
-            .pharmacy-table th:nth-child(2) { width: 35%; } /* Address */
-            .pharmacy-table th:nth-child(3) { width: 12%; } /* Call Status */
-            .pharmacy-table th:nth-child(4) { width: 12%; } /* Inventory Status */
-            .pharmacy-table th:nth-child(5) { width: 10%; } /* Notes */
-            .pharmacy-table th:nth-child(6) { width: 6%; }  /* Action */
-            
-            .pharmacy-table td {
-                padding: 8px;
-                overflow: hidden;
-                text-overflow: ellipsis;
-                white-space: nowrap;
-            }
-        </style>
-        <table class="pharmacy-table">
-            <thead>
-                <tr>
-                    <th>Name</th>
-                    <th>Address</th>
-                    <th>Call Status</th>
-                    <th>Inventory Status</th>
-                    <th>Notes</th>
-                    <th>Action</th>
-                </tr>
-            </thead>
-            <tbody>
-            </tbody>
-        </table>
-    `;
-
-    const tableBody = pharmacyListDiv.querySelector('tbody');
+    // Show the pharmacy list container
+    pharmacyListDiv.style.display = 'block';
+    
+    // Clear existing rows
+    tableBody.innerHTML = '';
     
     // Define statuses for reference
     const statuses = [

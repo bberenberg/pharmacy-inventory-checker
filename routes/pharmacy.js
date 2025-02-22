@@ -1,6 +1,5 @@
 import { Client } from "@googlemaps/google-maps-services-js";
 import { twilioPrompts } from '../config/twilio-prompts.js';
-import { twilioClient } from '../config/twilio-client.js';
 
 const mapsClient = new Client({});
 
@@ -216,16 +215,28 @@ export default async function pharmacyRoutes(fastify) {
         }
       });
 
-      const pharmacies = response.data.results
+      const pharmacies = await Promise.all(response.data.results
         .slice(0, 10)
-        .map((place, index) => ({
-          id: place.place_id,
-          name: place.name,
-          address: place.vicinity,
-          location: place.geometry.location,
-          rating: place.rating,
-          userRatingsTotal: place.user_ratings_total,
-          index: index + 1
+        .map(async (place, index) => {
+          // Get detailed place information including phone number
+          const details = await mapsClient.placeDetails({
+            params: {
+              place_id: place.place_id,
+              fields: ['formatted_phone_number'],
+              key: GOOGLE_MAPS_API_KEY
+            }
+          });
+          
+          return {
+            id: place.place_id,
+            name: place.name,
+            address: place.vicinity,
+            location: place.geometry.location,
+            rating: place.rating,
+            userRatingsTotal: place.user_ratings_total,
+            phoneNumber: details.data.result.formatted_phone_number,
+            index: index + 1
+          };
         }));
 
       return reply.send({
@@ -244,21 +255,31 @@ export default async function pharmacyRoutes(fastify) {
 
   // Add this new endpoint
   fastify.post("/call-pharmacy", async (request, reply) => {
-    const { pharmacyName, pharmacyAddress, drugName, strength } = request.body;
+    const { pharmacyName, pharmacyAddress, drugName, strength, phoneNumber } = request.body;
+    
+    if (!phoneNumber) {
+      return reply.code(400).send({
+        success: false,
+        error: "Pharmacy phone number is required"
+      });
+    }
+    
+    // Format phone number to E.164 format if it's not already
+    const formattedPhone = phoneNumber.startsWith('+') 
+      ? phoneNumber 
+      : phoneNumber.replace(/\D/g, '').replace(/^1?(\d{10})$/, '+1$1');
     
     try {
-      // Create the prompt and first message
       const prompt = twilioPrompts.pharmacyCall.getPrompt(pharmacyName, drugName, strength);
       const first_message = twilioPrompts.pharmacyCall.greeting(pharmacyName);
 
-      // Call the existing outbound-call endpoint
       const response = await fetch(`https://${request.headers.host}/outbound-call`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json'
         },
         body: JSON.stringify({
-          number: '+1234567890', // This would come from pharmacy data
+          number: formattedPhone,
           prompt,
           first_message
         })

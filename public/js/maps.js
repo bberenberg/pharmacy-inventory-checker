@@ -66,6 +66,7 @@ export function displayPharmacies(pharmacies) {
                     <th>Rating</th>
                     <th>Reviews</th>
                     <th>Status</th>
+                    <th>Action</th>
                 </tr>
             </thead>
             <tbody>
@@ -75,7 +76,7 @@ export function displayPharmacies(pharmacies) {
 
     const tableBody = pharmacyListDiv.querySelector('tbody');
     
-    // Define status progression
+    // Define statuses for reference
     const statuses = [
         { text: 'To Check', class: 'status-to-check' },
         { text: 'Checking', class: 'status-checking' },
@@ -83,8 +84,7 @@ export function displayPharmacies(pharmacies) {
         { text: 'Out of Stock', class: 'status-out-of-stock' }
     ];
     
-    // Create all rows first
-    const statusCells = pharmacies.map((pharmacy, index) => {
+    pharmacies.forEach((pharmacy) => {
         const marker = addMarker(
             pharmacy.location,
             pharmacy.name,
@@ -93,6 +93,7 @@ export function displayPharmacies(pharmacies) {
 
         const row = document.createElement('tr');
         row.className = 'pharmacy-row';
+        row.dataset.phoneNumber = pharmacy.phoneNumber;
         
         row.innerHTML = `
             <td>${pharmacy.index}</td>
@@ -101,7 +102,62 @@ export function displayPharmacies(pharmacies) {
             <td>${pharmacy.rating ? `${pharmacy.rating}` : 'N/A'}</td>
             <td>${pharmacy.userRatingsTotal || 'N/A'}</td>
             <td><span class="status-lozenge ${statuses[0].class}">${statuses[0].text}</span></td>
+            <td>
+                <button class="call-button">Call</button>
+            </td>
         `;
+
+        const statusElement = row.querySelector('.status-lozenge');
+        const callButton = row.querySelector('.call-button');
+
+        callButton.addEventListener('click', async () => {
+            try {
+                // Disable button during call
+                callButton.disabled = true;
+                
+                // Update status to "Checking"
+                statusElement.className = `status-lozenge ${statuses[1].class}`;
+                statusElement.textContent = statuses[1].text;
+
+                const drugName = document.getElementById('drug').value;
+                const strength = document.getElementById('strength').value;
+                const phoneNumber = row.dataset.phoneNumber;
+                
+                const response = await fetch('/call-pharmacy', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify({
+                        pharmacyName: pharmacy.name,
+                        pharmacyAddress: pharmacy.address,
+                        drugName,
+                        strength,
+                        phoneNumber
+                    })
+                });
+
+                const data = await response.json();
+                if (!data.success) {
+                    throw new Error(data.error);
+                }
+
+                // For now, randomly set to either In Stock or Out of Stock after a delay
+                setTimeout(() => {
+                    const finalStatus = Math.random() > 0.5 ? statuses[2] : statuses[3];
+                    statusElement.className = `status-lozenge ${finalStatus.class}`;
+                    statusElement.textContent = finalStatus.text;
+                    callButton.disabled = false;
+                }, 3000);
+
+            } catch (error) {
+                console.error('Failed to initiate pharmacy call:', error);
+                // Reset status on error
+                statusElement.className = `status-lozenge ${statuses[0].class}`;
+                statusElement.textContent = statuses[0].text;
+                callButton.disabled = false;
+            }
+        });
 
         row.addEventListener('mouseover', () => {
             marker.setAnimation(google.maps.Animation.BOUNCE);
@@ -113,68 +169,5 @@ export function displayPharmacies(pharmacies) {
         });
 
         tableBody.appendChild(row);
-        return row.querySelector('.status-lozenge');
-    });
-
-    // Start the sequential checking process
-    checkPharmaciesSequentially(statusCells, statuses);
-}
-
-async function checkPharmaciesSequentially(statusCells, statuses) {
-    for (const statusElement of statusCells) {
-        await simulateStatusProgression(statusElement, statuses);
-    }
-}
-
-async function simulateStatusProgression(statusElement, statuses) {
-    let currentStep = 0;
-    
-    return new Promise(async (resolve) => {
-        async function updateStatus() {
-            currentStep++;
-            
-            if (currentStep < statuses.length) {
-                // If moving to "Checking" status, make the API call
-                if (statuses[currentStep].text === 'Checking') {
-                    try {
-                        const row = statusElement.closest('tr');
-                        const pharmacyName = row.querySelector('td:nth-child(2)').textContent;
-                        const pharmacyAddress = row.querySelector('td:nth-child(3)').textContent;
-                        
-                        const response = await fetch('/call-pharmacy', {
-                            method: 'POST',
-                            headers: {
-                                'Content-Type': 'application/json'
-                            },
-                            body: JSON.stringify({
-                                pharmacyName,
-                                pharmacyAddress
-                            })
-                        });
-
-                        const data = await response.json();
-                        if (!data.success) {
-                            throw new Error(data.error);
-                        }
-                    } catch (error) {
-                        console.error('Failed to initiate pharmacy call:', error);
-                    }
-                }
-
-                // Update status display
-                statusElement.className = `status-lozenge ${statuses[currentStep].class}`;
-                statusElement.textContent = statuses[currentStep].text;
-                
-                // Schedule next update with random delay
-                const delay = 1000 + Math.random() * 2000;
-                setTimeout(updateStatus, delay);
-            } else {
-                resolve(); // Resolve the promise when all statuses are complete
-            }
-        }
-
-        // Start with initial delay
-        const initialDelay = 1000 + Math.random() * 2000;
-        setTimeout(updateStatus, initialDelay);
     });
 } 

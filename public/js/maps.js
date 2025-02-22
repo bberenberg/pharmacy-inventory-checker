@@ -55,7 +55,6 @@ export function addMarker(location, title, label) {
 export function displayPharmacies(pharmacies) {
     const pharmacyListDiv = document.getElementById('pharmacyList');
     
-    // Create table structure
     pharmacyListDiv.innerHTML = `
         <h2>Nearby Pharmacies</h2>
         <table class="pharmacy-table">
@@ -67,7 +66,6 @@ export function displayPharmacies(pharmacies) {
                     <th>Rating</th>
                     <th>Reviews</th>
                     <th>Status</th>
-                    ${document.getElementById('drug').value ? '<th>Medication</th>' : ''}
                 </tr>
             </thead>
             <tbody>
@@ -77,7 +75,7 @@ export function displayPharmacies(pharmacies) {
 
     const tableBody = pharmacyListDiv.querySelector('tbody');
     
-    // Define possible statuses
+    // Define status progression
     const statuses = [
         { text: 'To Check', class: 'status-to-check' },
         { text: 'Checking', class: 'status-checking' },
@@ -85,7 +83,8 @@ export function displayPharmacies(pharmacies) {
         { text: 'Out of Stock', class: 'status-out-of-stock' }
     ];
     
-    pharmacies.forEach(pharmacy => {
+    // Create all rows first
+    const statusCells = pharmacies.map((pharmacy, index) => {
         const marker = addMarker(
             pharmacy.location,
             pharmacy.name,
@@ -95,20 +94,13 @@ export function displayPharmacies(pharmacies) {
         const row = document.createElement('tr');
         row.className = 'pharmacy-row';
         
-        const drugName = document.getElementById('drug').value;
-        const strength = document.getElementById('strength').value;
-        
-        // Randomly select a status
-        const randomStatus = statuses[Math.floor(Math.random() * statuses.length)];
-        
         row.innerHTML = `
             <td>${pharmacy.index}</td>
             <td><strong>${pharmacy.name}</strong></td>
             <td>${pharmacy.address}</td>
             <td>${pharmacy.rating ? `${pharmacy.rating}` : 'N/A'}</td>
             <td>${pharmacy.userRatingsTotal || 'N/A'}</td>
-            <td><span class="status-lozenge ${randomStatus.class}">${randomStatus.text}</span></td>
-            ${drugName ? `<td>${drugName}${strength ? ` - ${strength}` : ''}</td>` : ''}
+            <td><span class="status-lozenge ${statuses[0].class}">${statuses[0].text}</span></td>
         `;
 
         row.addEventListener('mouseover', () => {
@@ -121,5 +113,68 @@ export function displayPharmacies(pharmacies) {
         });
 
         tableBody.appendChild(row);
+        return row.querySelector('.status-lozenge');
+    });
+
+    // Start the sequential checking process
+    checkPharmaciesSequentially(statusCells, statuses);
+}
+
+async function checkPharmaciesSequentially(statusCells, statuses) {
+    for (const statusElement of statusCells) {
+        await simulateStatusProgression(statusElement, statuses);
+    }
+}
+
+async function simulateStatusProgression(statusElement, statuses) {
+    let currentStep = 0;
+    
+    return new Promise(async (resolve) => {
+        async function updateStatus() {
+            currentStep++;
+            
+            if (currentStep < statuses.length) {
+                // If moving to "Checking" status, make the API call
+                if (statuses[currentStep].text === 'Checking') {
+                    try {
+                        const row = statusElement.closest('tr');
+                        const pharmacyName = row.querySelector('td:nth-child(2)').textContent;
+                        const pharmacyAddress = row.querySelector('td:nth-child(3)').textContent;
+                        
+                        const response = await fetch('/call-pharmacy', {
+                            method: 'POST',
+                            headers: {
+                                'Content-Type': 'application/json'
+                            },
+                            body: JSON.stringify({
+                                pharmacyName,
+                                pharmacyAddress
+                            })
+                        });
+
+                        const data = await response.json();
+                        if (!data.success) {
+                            throw new Error(data.error);
+                        }
+                    } catch (error) {
+                        console.error('Failed to initiate pharmacy call:', error);
+                    }
+                }
+
+                // Update status display
+                statusElement.className = `status-lozenge ${statuses[currentStep].class}`;
+                statusElement.textContent = statuses[currentStep].text;
+                
+                // Schedule next update with random delay
+                const delay = 1000 + Math.random() * 2000;
+                setTimeout(updateStatus, delay);
+            } else {
+                resolve(); // Resolve the promise when all statuses are complete
+            }
+        }
+
+        // Start with initial delay
+        const initialDelay = 1000 + Math.random() * 2000;
+        setTimeout(updateStatus, initialDelay);
     });
 } 

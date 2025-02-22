@@ -1,4 +1,6 @@
 import { Client } from "@googlemaps/google-maps-services-js";
+import { twilioPrompts } from '../config/twilio-prompts.js';
+import { twilioClient } from '../config/twilio-client.js';
 
 const mapsClient = new Client({});
 
@@ -236,6 +238,39 @@ export default async function pharmacyRoutes(fastify) {
         success: false,
         error: "Failed to find nearby pharmacies",
         details: error.message
+      });
+    }
+  });
+
+  // Add this new endpoint
+  fastify.post("/call-pharmacy", async (request, reply) => {
+    const { pharmacyName, pharmacyAddress, drugName, strength } = request.body;
+    
+    try {
+      // Create the prompt and first message
+      const prompt = twilioPrompts.pharmacyCall.getPrompt(pharmacyName, drugName, strength);
+      const first_message = twilioPrompts.pharmacyCall.greeting(pharmacyName);
+
+      // Call the existing outbound-call endpoint
+      const response = await fetch(`https://${request.headers.host}/outbound-call`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify({
+          number: '+1234567890', // This would come from pharmacy data
+          prompt,
+          first_message
+        })
+      });
+
+      const data = await response.json();
+      return reply.send(data);
+    } catch (error) {
+      console.error("Error initiating pharmacy call:", error);
+      return reply.code(500).send({
+        success: false,
+        error: "Failed to initiate call to pharmacy"
       });
     }
   });

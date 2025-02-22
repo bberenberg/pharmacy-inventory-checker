@@ -42,7 +42,7 @@ const __dirname = path.dirname(__filename);
 // Register static file handling first
 fastify.register(fastifyStatic, {
   root: path.join(__dirname, "public"),
-  prefix: "/", 
+  prefix: "/",
 });
 
 // Then register other plugins and routes
@@ -88,6 +88,8 @@ async function getSignedUrl() {
 // Store for pending call prompts
 const pendingCallPrompts = new Map();
 
+
+
 // Modified outbound-call route
 fastify.post("/outbound-call", async (request, reply) => {
   const { number, prompt, first_message } = request.body;
@@ -99,7 +101,7 @@ fastify.post("/outbound-call", async (request, reply) => {
   try {
     // Get the base URL from environment or request
     const baseUrl = PUBLIC_URL || `https://${request.headers.host}`;
-    
+
     // Make the call without prompts in URL
     const call = await twilioClient.calls.create({
       to: number,
@@ -173,13 +175,13 @@ function fetchConversationWithRetry(conversationId, attempts = 10, fixedDelay = 
         }
       }
     )
-    .then(response => response.json())
-    .then(data => {
-      attempt++;
-      allResults.push({ attempt, timestamp: new Date().toISOString(), data });
-      
-      // Check if we have meaningful data_collection_results
-      if (data?.analysis?.data_collection_results && 
+      .then(response => response.json())
+      .then(data => {
+        attempt++;
+        allResults.push({ attempt, timestamp: new Date().toISOString(), data });
+
+        // Check if we have meaningful data_collection_results
+        if (data?.analysis?.data_collection_results &&
           Object.keys(data.analysis.data_collection_results).length > 0) {
         // Only log that we found results, save full logging for the end
         console.log("[ElevenLabs] Found data collection results on attempt", attempt);
@@ -235,14 +237,14 @@ fastify.register(async fastifyInstance => {
 
             // Get stored prompts
             const storedPrompts = pendingCallPrompts.get(callSid);
-            
+
             if (storedPrompts) {
               // Inject prompts into conversation config
               customParameters = {
                 prompt: storedPrompts.prompt,
                 first_message: storedPrompts.first_message
               };
-              
+
               // Send initial configuration with prompt and first message
               const initialConfig = {
                 type: "conversation_initiation_client_data",
@@ -357,7 +359,14 @@ fastify.register(async fastifyInstance => {
           });
 
           elevenLabsWs.on("close", () => {
-            console.log("[ElevenLabs] Disconnected");
+            console.log("[ElevenLabs] Disconnected. Will attempt to end call.");
+
+            twilioClient.calls(callSid)
+              .update({
+                status: 'completed'
+              }).then(call => {
+                console.log("Call ended successfully", call);
+              });
           });
         } catch (error) {
           console.error("[ElevenLabs] Setup error:", error);
@@ -402,7 +411,7 @@ fastify.register(async fastifyInstance => {
               console.log(`[Twilio] Stream ${streamSid} ended`);
               if (elevenLabsConversationId) {
                 console.log("[ElevenLabs] Call ended - Conversation ID:", elevenLabsConversationId);
-                
+
                 fetchConversationWithRetry(elevenLabsConversationId)
                   .then(({ data, allResults }) => {
                     // Only show the final successful data at the end

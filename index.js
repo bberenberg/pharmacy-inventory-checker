@@ -181,24 +181,19 @@ function fetchConversationWithRetry(conversationId, attempts = 10, fixedDelay = 
       // Check if we have meaningful data_collection_results
       if (data?.analysis?.data_collection_results && 
           Object.keys(data.analysis.data_collection_results).length > 0) {
+        // Only log that we found results, save full logging for the end
         console.log("[ElevenLabs] Found data collection results on attempt", attempt);
-        console.log("[ElevenLabs] Full analysis:", 
-          JSON.stringify({
-            call_successful: data.analysis.call_successful,
-            data_collection_results: data.analysis.data_collection_results
-          }, null, 2));
         return { data, allResults };
       }
       
       if (attempt >= attempts) {
-        // Return all results after all attempts are done
         return { 
-          data: allResults[allResults.length - 1].data, // last result
+          data: allResults[allResults.length - 1].data,
           allResults 
         };
       }
 
-      console.log(`[ElevenLabs] Making attempt ${attempt}/${attempts} in ${fixedDelay/1000} seconds... (No data collection results yet)`);
+      console.log(`[ElevenLabs] Making attempt ${attempt}/${attempts} in ${fixedDelay/1000} seconds...`);
       
       return new Promise(resolve => {
         setTimeout(() => resolve(tryFetch()), fixedDelay);
@@ -410,9 +405,36 @@ fastify.register(async fastifyInstance => {
                 
                 fetchConversationWithRetry(elevenLabsConversationId)
                   .then(({ data, allResults }) => {
-                    console.log("[ElevenLabs] All fetch attempts:", JSON.stringify(allResults, null, 2));
-                    if (data) {
-                      console.log("[ElevenLabs] Final successful conversation details:", data);
+                    // Only show the final successful data at the end
+                    if (data?.analysis?.data_collection_results) {
+                      console.log("\n=== Final Call Results ===");
+                      console.log("Call Status:", data.analysis.call_successful);
+                      
+                      const results = data.analysis.data_collection_results;
+                      
+                      // Stock Status
+                      if (results.StockStatus) {
+                        console.log("Stock Status:", results.StockStatus.value);
+                      }
+                      
+                      // Restock Timeline
+                      if (results.RestockTimeline) {
+                        console.log("Restock Timeline:", results.RestockTimeline.value);
+                      }
+                      
+                      // Alternative Feedback
+                      if (results.AlternativeFeedback) {
+                        console.log("Alternative Options:", results.AlternativeFeedback.value);
+                      }
+                      
+                      console.log("\nTranscript Summary:", data.analysis.transcript_summary);
+                      console.log("\nDetailed Conversation:");
+                      data.transcript.forEach(turn => {
+                        console.log(`${turn.role}: ${turn.message}`);
+                      });
+                      console.log("=====================\n");
+                    } else {
+                      console.log("[ElevenLabs] No data collection results found after all attempts");
                     }
                   })
                   .finally(() => {

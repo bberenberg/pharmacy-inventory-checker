@@ -107,6 +107,41 @@
         .selected {
             background-color: #e9ecef;
         }
+        .pharmacy-table {
+            width: 100%;
+            border-collapse: collapse;
+            margin-top: 10px;
+        }
+        .pharmacy-table th,
+        .pharmacy-table td {
+            padding: 8px;
+            text-align: left;
+            border-bottom: 1px solid #ddd;
+        }
+        .pharmacy-table th {
+            background-color: #f5f5f5;
+            font-weight: bold;
+        }
+        .pharmacy-row {
+            cursor: pointer;
+        }
+        .pharmacy-row:hover,
+        .pharmacy-row.highlighted {
+            background-color: #f5f5f5;
+        }
+        .pharmacy-table td:first-child {
+            width: 40px;
+        }
+        .button-group {
+            display: flex;
+            gap: 10px;
+        }
+        #quickTest {
+            background-color: #2196F3;
+        }
+        #quickTest:hover {
+            background-color: #1976D2;
+        }
     </style>
 </head>
 <body>
@@ -132,7 +167,10 @@
                         <div id="strengthList" class="autocomplete-list"></div>
                     </div>
                 </div>
-                <button type="submit">Find Pharmacies</button>
+                <div class="button-group">
+                    <button type="submit">Find Pharmacies</button>
+                    <button type="button" id="quickTest">Quick Test</button>
+                </div>
             </form>
             <div id="status"></div>
             <div class="pharmacy-list" id="pharmacyList"></div>

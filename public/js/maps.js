@@ -54,8 +54,28 @@ export function addMarker(location, title, label) {
 
 export function displayPharmacies(pharmacies) {
     const pharmacyListDiv = document.getElementById('pharmacyList');
-    pharmacyListDiv.innerHTML = '<h2>Nearby Pharmacies</h2>';
+    
+    // Create table structure
+    pharmacyListDiv.innerHTML = `
+        <h2>Nearby Pharmacies</h2>
+        <table class="pharmacy-table">
+            <thead>
+                <tr>
+                    <th>#</th>
+                    <th>Name</th>
+                    <th>Address</th>
+                    <th>Rating</th>
+                    <th>Reviews</th>
+                    ${document.getElementById('drug').value ? '<th>Medication</th>' : ''}
+                </tr>
+            </thead>
+            <tbody>
+            </tbody>
+        </table>
+    `;
 
+    const tableBody = pharmacyListDiv.querySelector('tbody');
+    
     pharmacies.forEach(pharmacy => {
         const marker = addMarker(
             pharmacy.location,
@@ -63,24 +83,30 @@ export function displayPharmacies(pharmacies) {
             pharmacy.index.toString()
         );
 
-        const item = document.createElement('div');
-        item.className = 'pharmacy-item';
+        const row = document.createElement('tr');
+        row.className = 'pharmacy-row';
+        
         const drugName = document.getElementById('drug').value;
         const strength = document.getElementById('strength').value;
-        item.innerHTML = `
-            <strong>${pharmacy.index}. ${pharmacy.name}</strong><br>
-            ${pharmacy.address}<br>
-            ${pharmacy.rating ? `Rating: ${pharmacy.rating}⭐ (${pharmacy.userRatingsTotal} reviews)` : 'No ratings yet'}<br>
-            ${drugName ? `<small>Searching for: ${drugName}${strength ? ` - ${strength}` : ''}</small>` : ''}
+        
+        row.innerHTML = `
+            <td>${pharmacy.index}</td>
+            <td><strong>${pharmacy.name}</strong></td>
+            <td>${pharmacy.address}</td>
+            <td>${pharmacy.rating ? `${pharmacy.rating}⭐` : 'N/A'}</td>
+            <td>${pharmacy.userRatingsTotal || 'N/A'}</td>
+            ${drugName ? `<td>${drugName}${strength ? ` - ${strength}` : ''}</td>` : ''}
         `;
 
-        item.addEventListener('mouseover', () => {
+        row.addEventListener('mouseover', () => {
             marker.setAnimation(google.maps.Animation.BOUNCE);
+            row.classList.add('highlighted');
         });
-        item.addEventListener('mouseout', () => {
+        row.addEventListener('mouseout', () => {
             marker.setAnimation(null);
+            row.classList.remove('highlighted');
         });
 
-        pharmacyListDiv.appendChild(item);
+        tableBody.appendChild(row);
     });
 } 

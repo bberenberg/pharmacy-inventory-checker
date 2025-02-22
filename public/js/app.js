@@ -65,6 +65,19 @@ function init() {
     map = initMap();
     setupDrugAutocomplete();
     setupFormHandler();
+    setupQuickTest();
+}
+
+function setupQuickTest() {
+    document.getElementById('quickTest').addEventListener('click', () => {
+        // Pre-fill form with test values
+        document.getElementById('address').value = '350 5th Ave, New York, NY 10118';
+        document.getElementById('drug').value = 'Lisinopril (Oral Pill)';
+        document.getElementById('strength').value = '10 mg Tab';
+        
+        // Trigger the form submission
+        document.getElementById('addressForm').dispatchEvent(new Event('submit'));
+    });
 }
 
 window.addEventListener('load', init); 

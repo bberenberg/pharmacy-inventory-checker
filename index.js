@@ -5,6 +5,9 @@ import fastifyFormBody from "@fastify/formbody";
 import fastifyWs from "@fastify/websocket";
 import Twilio from "twilio";
 import pharmacyRoutes from "./routes/pharmacy.js";
+import fastifyStatic from "@fastify/static";
+import path from "path";
+import { fileURLToPath } from "url";
 
 // Load environment variables from .env file
 dotenv.config();
@@ -31,14 +34,25 @@ if (
 
 // Initialize Fastify server
 const fastify = Fastify();
+
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = path.dirname(__filename);
+
+// Register static file handling first
+fastify.register(fastifyStatic, {
+  root: path.join(__dirname, "public"),
+  prefix: "/", 
+});
+
+// Then register other plugins and routes
 fastify.register(fastifyFormBody);
 fastify.register(fastifyWs);
 fastify.register(pharmacyRoutes);
 
 const PORT = process.env.PORT || 8000;
 
-// Root route for health check
-fastify.get("/", async (_, reply) => {
+// Change the root route to a different path for API health check
+fastify.get("/api/health", async (_, reply) => {
   reply.send({ message: "Server is running" });
 });
 

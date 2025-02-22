@@ -1,0 +1,109 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Phone Call System</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            max-width: 800px;
+            margin: 20px auto;
+            padding: 0 20px;
+        }
+        .form-group {
+            margin-bottom: 15px;
+        }
+        label {
+            display: block;
+            margin-bottom: 5px;
+        }
+        input, textarea {
+            width: 100%;
+            padding: 8px;
+            margin-bottom: 10px;
+        }
+        button {
+            background-color: #4CAF50;
+            color: white;
+            padding: 10px 15px;
+            border: none;
+            border-radius: 4px;
+            cursor: pointer;
+        }
+        button:hover {
+            background-color: #45a049;
+        }
+        #status {
+            margin-top: 20px;
+            padding: 10px;
+            border-radius: 4px;
+        }
+        .success {
+            background-color: #dff0d8;
+            color: #3c763d;
+        }
+        .error {
+            background-color: #f2dede;
+            color: #a94442;
+        }
+    </style>
+</head>
+<body>
+    <h1>Make Outbound Call</h1>
+    <form id="callForm">
+        <div class="form-group">
+            <label for="number">Phone Number:</label>
+            <input type="tel" id="number" name="number" required placeholder="+1234567890">
+        </div>
+        <div class="form-group">
+            <label for="prompt">Agent Prompt:</label>
+            <textarea id="prompt" name="prompt" rows="4" placeholder="You are Eric, an outbound car sales agent..."></textarea>
+        </div>
+        <div class="form-group">
+            <label for="first_message">First Message:</label>
+            <textarea id="first_message" name="first_message" rows="2" placeholder="Hello, my name is Eric..."></textarea>
+        </div>
+        <button type="submit">Make Call</button>
+    </form>
+    <div id="status"></div>
+
+    <script>
+        document.getElementById('callForm').addEventListener('submit', async (e) => {
+            e.preventDefault();
+            const statusDiv = document.getElementById('status');
+            statusDiv.className = '';
+            statusDiv.textContent = 'Initiating call...';
+
+            const formData = {
+                number: document.getElementById('number').value,
+                prompt: document.getElementById('prompt').value,
+                first_message: document.getElementById('first_message').value
+            };
+
+            try {
+                const response = await fetch('/outbound-call', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify(formData)
+                });
+
+                const data = await response.json();
+                
+                if (data.success) {
+                    statusDiv.className = 'success';
+                    statusDiv.textContent = `Call initiated successfully! Call SID: ${data.callSid}`;
+                } else {
+                    statusDiv.className = 'error';
+                    statusDiv.textContent = data.error || 'Failed to initiate call';
+                }
+            } catch (error) {
+                statusDiv.className = 'error';
+                statusDiv.textContent = 'Error: ' + error.message;
+            }
+        });
+    </script>
+</body>
+</html> 

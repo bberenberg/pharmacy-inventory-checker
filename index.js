@@ -158,6 +158,60 @@ fastify.post("/twilio/inbound_call", async (request, reply) => {
 // Add conversation ID tracking variable
 let elevenLabsConversationId = null;
 
+// Update the retry function
+function fetchConversationWithRetry(conversationId, attempts = 10, fixedDelay = 6000) {
+  let attempt = 0;
+  const allResults = [];
+
+  function tryFetch() {
+    return fetch(
+      `https://api.elevenlabs.io/v1/convai/conversations/${conversationId}`,
+      {
+        method: 'GET',
+        headers: {
+          'xi-api-key': ELEVENLABS_API_KEY
+        }
+      }
+    )
+    .then(response => response.json())
+    .then(data => {
+      attempt++;
+      allResults.push({ attempt, timestamp: new Date().toISOString(), data });
+      
+      // Check if we have meaningful data_collection_results
+      if (data?.analysis?.data_collection_results && 
+          Object.keys(data.analysis.data_collection_results).length > 0) {
+        console.log("[ElevenLabs] Found data collection results on attempt", attempt);
+        console.log("[ElevenLabs] Full analysis:", 
+          JSON.stringify({
+            call_successful: data.analysis.call_successful,
+            data_collection_results: data.analysis.data_collection_results
+          }, null, 2));
+        return { data, allResults };
+      }
+      
+      if (attempt >= attempts) {
+        // Return all results after all attempts are done
+        return { 
+          data: allResults[allResults.length - 1].data, // last result
+          allResults 
+        };
+      }
+
+      console.log(`[ElevenLabs] Making attempt ${attempt}/${attempts} in ${fixedDelay/1000} seconds... (No data collection results yet)`);
+      
+      return new Promise(resolve => {
+        setTimeout(() => resolve(tryFetch()), fixedDelay);
+      });
+    });
+  }
+
+  return tryFetch().catch(error => {
+    console.error(`[ElevenLabs] All attempts failed:`, error);
+    return { data: null, allResults };
+  });
+}
+
 // WebSocket route for handling media streams
 fastify.register(async fastifyInstance => {
   fastifyInstance.get(
@@ -217,7 +271,7 @@ fastify.register(async fastifyInstance => {
             }
           });
 
-          elevenLabsWs.on("message", data => {
+          elevenLabsWs.on("message", async data => {
             try {
               const message = JSON.parse(data);
 
@@ -319,7 +373,7 @@ fastify.register(async fastifyInstance => {
       setupElevenLabs();
 
       // Handle messages from Twilio
-      ws.on("message", message => {
+      ws.on("message", async message => {
         try {
           const msg = JSON.parse(message);
           if (msg.event !== "media") {
@@ -353,9 +407,23 @@ fastify.register(async fastifyInstance => {
               console.log(`[Twilio] Stream ${streamSid} ended`);
               if (elevenLabsConversationId) {
                 console.log("[ElevenLabs] Call ended - Conversation ID:", elevenLabsConversationId);
-              }
-              if (elevenLabsWs?.readyState === WebSocket.OPEN) {
-                elevenLabsWs.close();
+                
+                fetchConversationWithRetry(elevenLabsConversationId)
+                  .then(({ data, allResults }) => {
+                    console.log("[ElevenLabs] All fetch attempts:", JSON.stringify(allResults, null, 2));
+                    if (data) {
+                      console.log("[ElevenLabs] Final successful conversation details:", data);
+                    }
+                  })
+                  .finally(() => {
+                    if (elevenLabsWs?.readyState === WebSocket.OPEN) {
+                      elevenLabsWs.close();
+                    }
+                  });
+              } else {
+                if (elevenLabsWs?.readyState === WebSocket.OPEN) {
+                  elevenLabsWs.close();
+                }
               }
               break;
 

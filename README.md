@@ -39,6 +39,9 @@ ngrok http --url=<your-static-url> 8000
    - Set the webhook URL for incoming calls to: `{your-ngrok-url}/twilio/inbound_call`
    - Make sure the HTTP method is set to POST
 
+6. Set up ElevenLabs
+   - See https://elevenlabs.io/docs/conversational-ai/guides/twilio/outbound-calling
+
 ## Testing
 
 1. Call your Twilio phone number

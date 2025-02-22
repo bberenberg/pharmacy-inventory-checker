@@ -63,9 +63,8 @@ export function displayPharmacies(pharmacies) {
                     <th>#</th>
                     <th>Name</th>
                     <th>Address</th>
-                    <th>Rating</th>
-                    <th>Reviews</th>
-                    <th>Status</th>
+                    <th>Call Status</th>
+                    <th>Inventory Status</th>
                     <th>Action</th>
                 </tr>
             </thead>
@@ -79,9 +78,12 @@ export function displayPharmacies(pharmacies) {
     // Define statuses for reference
     const statuses = [
         { text: 'To Check', class: 'status-to-check' },
-        { text: 'Checking', class: 'status-checking' },
+        { text: 'Calling...', class: 'status-checking' },
+        { text: 'Call Successful', class: 'status-success' },
+        { text: 'Call Failed', class: 'status-failed' },
         { text: 'In Stock', class: 'status-in-stock' },
-        { text: 'Out of Stock', class: 'status-out-of-stock' }
+        { text: 'Out of Stock', class: 'status-out-of-stock' },
+        { text: 'Unknown', class: 'status-unknown' }
     ];
     
     pharmacies.forEach((pharmacy) => {
@@ -99,15 +101,15 @@ export function displayPharmacies(pharmacies) {
             <td>${pharmacy.index}</td>
             <td><strong>${pharmacy.name}</strong></td>
             <td>${pharmacy.address}</td>
-            <td>${pharmacy.rating ? `${pharmacy.rating}` : 'N/A'}</td>
-            <td>${pharmacy.userRatingsTotal || 'N/A'}</td>
-            <td><span class="status-lozenge ${statuses[0].class}">${statuses[0].text}</span></td>
+            <td><span class="status-lozenge ${statuses[0].class}" data-type="call">${statuses[0].text}</span></td>
+            <td><span class="status-lozenge ${statuses[0].class}" data-type="inventory">${statuses[0].text}</span></td>
             <td>
                 <button class="call-button">Call</button>
             </td>
         `;
 
-        const statusElement = row.querySelector('.status-lozenge');
+        const callStatusElement = row.querySelector('.status-lozenge[data-type="call"]');
+        const inventoryStatusElement = row.querySelector('.status-lozenge[data-type="inventory"]');
         const callButton = row.querySelector('.call-button');
 
         callButton.addEventListener('click', async () => {
@@ -115,9 +117,9 @@ export function displayPharmacies(pharmacies) {
                 // Disable button during call
                 callButton.disabled = true;
                 
-                // Update status to "Checking"
-                statusElement.className = `status-lozenge ${statuses[1].class}`;
-                statusElement.textContent = statuses[1].text;
+                // Update call status to "Calling..."
+                callStatusElement.className = `status-lozenge ${statuses[1].class}`;
+                callStatusElement.textContent = statuses[1].text;
 
                 const drugName = document.getElementById('drug').value;
                 const strength = document.getElementById('strength').value;
@@ -142,19 +144,15 @@ export function displayPharmacies(pharmacies) {
                     throw new Error(data.error);
                 }
 
-                // For now, randomly set to either In Stock or Out of Stock after a delay
-                setTimeout(() => {
-                    const finalStatus = Math.random() > 0.5 ? statuses[2] : statuses[3];
-                    statusElement.className = `status-lozenge ${finalStatus.class}`;
-                    statusElement.textContent = finalStatus.text;
-                    callButton.disabled = false;
-                }, 3000);
-
+                // We'll need to update these statuses based on the conversation results
+                // This will be handled by a new WebSocket connection or polling mechanism
             } catch (error) {
-                console.error('Failed to initiate pharmacy call:', error);
-                // Reset status on error
-                statusElement.className = `status-lozenge ${statuses[0].class}`;
-                statusElement.textContent = statuses[0].text;
+                console.error('Error:', error);
+                callStatusElement.className = `status-lozenge ${statuses[3].class}`;
+                callStatusElement.textContent = statuses[3].text;
+                inventoryStatusElement.className = `status-lozenge ${statuses[6].class}`;
+                inventoryStatusElement.textContent = statuses[6].text;
+            } finally {
                 callButton.disabled = false;
             }
         });

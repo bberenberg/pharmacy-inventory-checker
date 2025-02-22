@@ -155,6 +155,9 @@ fastify.post("/twilio/inbound_call", async (request, reply) => {
   reply.type("text/xml").send(twimlResponse);
 });
 
+// Add conversation ID tracking variable
+let elevenLabsConversationId = null;
+
 // WebSocket route for handling media streams
 fastify.register(async fastifyInstance => {
   fastifyInstance.get(
@@ -220,7 +223,12 @@ fastify.register(async fastifyInstance => {
 
               switch (message.type) {
                 case "conversation_initiation_metadata":
-                  console.log("[ElevenLabs] Received initiation metadata");
+                  console.log("[ElevenLabs] Received initiation metadata:", message);
+                  // Store the conversation ID from the correct path
+                  if (message.conversation_initiation_metadata_event?.conversation_id) {
+                    elevenLabsConversationId = message.conversation_initiation_metadata_event.conversation_id;
+                    console.log("[ElevenLabs] Conversation ID:", elevenLabsConversationId);
+                  }
                   break;
 
                 case "audio":
@@ -343,6 +351,9 @@ fastify.register(async fastifyInstance => {
 
             case "stop":
               console.log(`[Twilio] Stream ${streamSid} ended`);
+              if (elevenLabsConversationId) {
+                console.log("[ElevenLabs] Call ended - Conversation ID:", elevenLabsConversationId);
+              }
               if (elevenLabsWs?.readyState === WebSocket.OPEN) {
                 elevenLabsWs.close();
               }

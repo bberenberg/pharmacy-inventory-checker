@@ -19,6 +19,7 @@ const {
   TWILIO_ACCOUNT_SID,
   TWILIO_AUTH_TOKEN,
   TWILIO_PHONE_NUMBER,
+  PUBLIC_URL,
 } = process.env;
 
 if (
@@ -84,7 +85,10 @@ async function getSignedUrl() {
   }
 }
 
-// Route to initiate outbound calls
+// Store for pending call prompts
+const pendingCallPrompts = new Map();
+
+// Modified outbound-call route
 fastify.post("/outbound-call", async (request, reply) => {
   const { number, prompt, first_message } = request.body;
 
@@ -93,27 +97,31 @@ fastify.post("/outbound-call", async (request, reply) => {
   }
 
   try {
+    // Get the base URL from environment or request
+    const baseUrl = PUBLIC_URL || `https://${request.headers.host}`;
+    
+    // Make the call without prompts in URL
     const call = await twilioClient.calls.create({
-      from: TWILIO_PHONE_NUMBER,
       to: number,
-      url: `https://${
-        request.headers.host
-      }/outbound-call-twiml?prompt=${encodeURIComponent(
-        prompt
-      )}&first_message=${encodeURIComponent(first_message)}`,
+      from: TWILIO_PHONE_NUMBER,
+      url: `${baseUrl}/twilio/inbound_call`,
     });
 
-    reply.send({
-      success: true,
-      message: "Call initiated",
-      callSid: call.sid,
+    // Store prompts mapped to callSid
+    pendingCallPrompts.set(call.sid, {
+      prompt,
+      first_message
     });
+
+    // Cleanup after 5 minutes in case call never connects
+    setTimeout(() => {
+      pendingCallPrompts.delete(call.sid);
+    }, 300000); // 5 minutes
+
+    return reply.send({ success: true, callSid: call.sid });
   } catch (error) {
-    console.error("Error initiating outbound call:", error);
-    reply.code(500).send({
-      success: false,
-      error: "Failed to initiate call",
-    });
+    console.error("Error initiating call:", error);
+    return reply.code(500).send({ error: error.message });
   }
 });
 
@@ -131,6 +139,18 @@ fastify.all("/outbound-call-twiml", async (request, reply) => {
           </Stream>
         </Connect>
       </Response>`;
+
+  reply.type("text/xml").send(twimlResponse);
+});
+
+// TwiML route for inbound calls
+fastify.post("/twilio/inbound_call", async (request, reply) => {
+  const twimlResponse = `<?xml version="1.0" encoding="UTF-8"?>
+    <Response>
+      <Connect>
+        <Stream url="wss://${request.headers.host}/outbound-media-stream" />
+      </Connect>
+    </Response>`;
 
   reply.type("text/xml").send(twimlResponse);
 });
@@ -161,30 +181,37 @@ fastify.register(async fastifyInstance => {
           elevenLabsWs.on("open", () => {
             console.log("[ElevenLabs] Connected to Conversational AI");
 
-            // Send initial configuration with prompt and first message
-            const initialConfig = {
-              type: "conversation_initiation_client_data",
-              conversation_config_override: {
-                agent: {
-                  prompt: {
-                    prompt:
-                      customParameters?.prompt ||
-                      "you are a gary from the phone store",
+            // Get stored prompts
+            const storedPrompts = pendingCallPrompts.get(callSid);
+            
+            if (storedPrompts) {
+              // Inject prompts into conversation config
+              customParameters = {
+                prompt: storedPrompts.prompt,
+                first_message: storedPrompts.first_message
+              };
+              
+              // Send initial configuration with prompt and first message
+              const initialConfig = {
+                type: "conversation_initiation_client_data",
+                conversation_config_override: {
+                  agent: {
+                    prompt: {
+                      prompt: customParameters.prompt,
+                    },
+                    first_message: customParameters.first_message,
                   },
-                  first_message:
-                    customParameters?.first_message ||
-                    "hey there! how can I help you today?",
                 },
-              },
-            };
+              };
 
-            console.log(
-              "[ElevenLabs] Sending initial config with prompt:",
-              initialConfig.conversation_config_override.agent.prompt.prompt
-            );
+              console.log(
+                "[ElevenLabs] Sending initial config with prompt:",
+                initialConfig.conversation_config_override.agent.prompt.prompt
+              );
 
-            // Send the configuration to ElevenLabs
-            elevenLabsWs.send(JSON.stringify(initialConfig));
+              // Send the configuration to ElevenLabs
+              elevenLabsWs.send(JSON.stringify(initialConfig));
+            }
           });
 
           elevenLabsWs.on("message", data => {

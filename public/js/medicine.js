@@ -7,7 +7,7 @@ async function searchDrugs(query) {
         );
         const [total, names, extras, fullNames] = await response.json();
         console.log('Search API Response:', { total, names, extras, fullNames });
-        
+
         return names.map(name => ({
             name: name,
             strengths: extras.STRENGTHS_AND_FORMS[names.indexOf(name)] || []
@@ -39,7 +39,7 @@ export function setupDrugAutocomplete() {
         debounceTimer = setTimeout(async () => {
             const results = await searchDrugs(drugInput.value);
             drugList.innerHTML = '';
-            
+
             if (results.length > 0) {
                 results.forEach((result) => {
                     const div = document.createElement('div');
@@ -48,15 +48,15 @@ export function setupDrugAutocomplete() {
                     div.addEventListener('click', async () => {
                         drugInput.value = result.name;
                         drugList.style.display = 'none';
-                        
+
                         const strengths = result.strengths;
                         console.log('Available strengths:', strengths);
                         currentDrugData = result;
-                        
+
                         if (strengths && strengths.length > 0) {
                             strengthInput.disabled = false;
                             strengthInput.placeholder = 'Select strength';
-                            
+
                             strengthList.innerHTML = '';
                             strengthList.style.display = 'block';
                             strengths.forEach(strength => {
@@ -100,4 +100,4 @@ export function setupDrugAutocomplete() {
             strengthList.style.display = 'none';
         }
     });
-} 
+}

@@ -47,9 +47,9 @@ export default async function pharmacyRoutes(fastify) {
       });
 
       if (!geocodeResponse.data.results?.length) {
-        return reply.code(400).send({ 
+        return reply.code(400).send({
           success: false,
-          error: "Could not find the specified address" 
+          error: "Could not find the specified address"
         });
       }
 
@@ -146,7 +146,7 @@ export default async function pharmacyRoutes(fastify) {
             }
 
             const details = detailsResponse.data.result;
-            
+
             // Calculate distance using Haversine formula
             const distance = calculateDistance(
               lat,
@@ -199,9 +199,9 @@ export default async function pharmacyRoutes(fastify) {
     const { location } = request.body;
 
     if (!location || !location.lat || !location.lng) {
-      return reply.code(400).send({ 
+      return reply.code(400).send({
         success: false,
-        error: "Location is required" 
+        error: "Location is required"
       });
     }
 
@@ -226,7 +226,7 @@ export default async function pharmacyRoutes(fastify) {
               key: GOOGLE_MAPS_API_KEY
             }
           });
-          
+
           return {
             id: place.place_id,
             name: place.name,
@@ -253,24 +253,25 @@ export default async function pharmacyRoutes(fastify) {
     }
   });
 
+
   // Add this new endpoint
   fastify.post("/call-pharmacy", async (request, reply) => {
     const { pharmacyName, pharmacyAddress, drugName, strength, phoneNumber } = request.body;
-    
+
     if (!phoneNumber) {
       return reply.code(400).send({
         success: false,
         error: "Pharmacy phone number is required"
       });
     }
-    
+
     // Format phone number to E.164 format if it's not already
-   /* const formattedPhone = phoneNumber.startsWith('+') 
-      ? phoneNumber 
-      : phoneNumber.replace(/\D/g, '').replace(/^1?(\d{10})$/, '+1$1');
-    */
-    const formattedPhone = "+14088361690";
-    
+    /* const formattedPhone = phoneNumber.startsWith('+')
+       ? phoneNumber
+       : phoneNumber.replace(/\D/g, '').replace(/^1?(\d{10})$/, '+1$1');
+     */
+    const formattedPhone = "+19125158456";
+
     try {
       const prompt = twilioPrompts.pharmacyCall.getPrompt(pharmacyName, drugName, strength);
       const first_message = twilioPrompts.pharmacyCall.greeting(pharmacyName);
@@ -288,6 +289,7 @@ export default async function pharmacyRoutes(fastify) {
       });
 
       const data = await response.json();
+      console.log("call data", data);
       return reply.send(data);
     } catch (error) {
       console.error("Error initiating pharmacy call:", error);
@@ -297,4 +299,4 @@ export default async function pharmacyRoutes(fastify) {
       });
     }
   });
-} 
+}

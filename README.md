@@ -22,24 +22,34 @@ npm install
 - Copy `.env.example` to `.env`: `cp .env.example .env`
 - Add your ElevenLabs Agent ID and API key to the `.env` file
 
-3. Start the server:
+3e Setup the SQlite database:
+
+```bash
+sqlite3 aipharmacy < schema.sql
+
+sqlite3 aipharmacy < seed.sql
+
+sqlite3 aipharmacy
+```
+
+4. Start the server:
 
 ```bash
 node index.js
 ```
 
-4. In a new terminal, use ngrok to create a public URL:
+5. In a new terminal, use ngrok to create a public URL:
 
 ```bash
 ngrok http --url=<your-static-url> 8000
 ```
 
-5. Configure your Twilio webhook:
+6. Configure your Twilio webhook:
    - Go to your Twilio Phone Number settings
    - Set the webhook URL for incoming calls to: `{your-ngrok-url}/twilio/inbound_call`
    - Make sure the HTTP method is set to POST
 
-6. Set up ElevenLabs
+7. Set up ElevenLabs
    - See https://elevenlabs.io/docs/conversational-ai/guides/twilio/outbound-calling
 
 ## Testing

@@ -8,6 +8,10 @@ import pharmacyRoutes from "./routes/pharmacy.js";
 import fastifyStatic from "@fastify/static";
 import path from "path";
 import { fileURLToPath } from "url";
+import sqlite3 from 'sqlite3';
+import { open } from 'sqlite';
+
+let db;
 
 // Load environment variables from .env file
 dotenv.config();
@@ -39,6 +43,37 @@ const fastify = Fastify();
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 
+try {
+  db = await open({
+    filename: './aipharmacy',
+    driver: sqlite3.Database
+  });
+
+  let pha = await getPharmacy(db, 'CVS');
+  if (!pha) {
+    throw new Error('Pharmacy not found');
+  }
+} catch (error) {
+  console.error('Error opening database:', error);
+}
+
+function getPharmacy(db, name) {
+  return db.get('SELECT * FROM pharmacy WHERE name LIKE ?', [`%${name}%`]);
+}
+
+function getDrug(db, name) {
+  return db.get('SELECT * FROM drug WHERE name LIKE ?', [`%${name}%`]);
+}
+
+function insertOrUpdateAvailability(db, drugId, pharmacyId, quantity, ava_date) {
+  return db.run(`
+    INSERT INTO pharmacy_drug_availability
+      (drug_id, pharmacy_id, quantity, available_from)
+    VALUES
+      (?, ?, ?, ?)
+  `, [drugId, pharmacyId, quantity, ava_date]);
+}
+
 // Register static file handling first
 fastify.register(fastifyStatic, {
   root: path.join(__dirname, "public"),
@@ -55,6 +90,11 @@ const PORT = process.env.PORT || 8000;
 // Change the root route to a different path for API health check
 fastify.get("/api/health", async (_, reply) => {
   reply.send({ message: "Server is running" });
+});
+
+fastify.get("/availability", async (_, reply) => {
+  // render html page
+  return reply.sendFile('availability.html');
 });
 
 // Initialize Twilio client
@@ -183,24 +223,24 @@ function fetchConversationWithRetry(conversationId, attempts = 10, fixedDelay = 
         // Check if we have meaningful data_collection_results
         if (data?.analysis?.data_collection_results &&
           Object.keys(data.analysis.data_collection_results).length > 0) {
-        // Only log that we found results, save full logging for the end
-        console.log("[ElevenLabs] Found data collection results on attempt", attempt);
-        return { data, allResults };
-      }
-      
-      if (attempt >= attempts) {
-        return { 
-          data: allResults[allResults.length - 1].data,
-          allResults 
-        };
-      }
+          // Only log that we found results, save full logging for the end
+          console.log("[ElevenLabs] Found data collection results on attempt", attempt);
+          return { data, allResults };
+        }
 
-      console.log(`[ElevenLabs] Making attempt ${attempt}/${attempts} in ${fixedDelay/1000} seconds...`);
-      
-      return new Promise(resolve => {
-        setTimeout(() => resolve(tryFetch()), fixedDelay);
+        if (attempt >= attempts) {
+          return {
+            data: allResults[allResults.length - 1].data,
+            allResults
+          };
+        }
+
+        console.log(`[ElevenLabs] Making attempt ${attempt}/${attempts} in ${fixedDelay / 1000} seconds...`);
+
+        return new Promise(resolve => {
+          setTimeout(() => resolve(tryFetch()), fixedDelay);
+        });
       });
-    });
   }
 
   return tryFetch().catch(error => {
@@ -366,6 +406,19 @@ fastify.register(async fastifyInstance => {
                 status: 'completed'
               }).then(call => {
                 console.log("Call ended successfully", call);
+
+                getPharmacy(db, 'CVS').then(pharmacy => {
+                  console.log('Found Pharmacy:', pharmacy);
+                  getDrug(db, 'Amoxicillin').then(drug => {
+                    console.log("Found Drug:", drug);
+
+                    const availableFrom = new Date().toISOString();
+
+                    insertOrUpdateAvailability(db, drug.id, pharmacy.id, 10, availableFrom).then(() => {
+                      console.log('Availability updated');
+                    });
+                  });
+                });
               });
           });
         } catch (error) {
@@ -418,24 +471,24 @@ fastify.register(async fastifyInstance => {
                     if (data?.analysis?.data_collection_results) {
                       console.log("\n=== Final Call Results ===");
                       console.log("Call Status:", data.analysis.call_successful);
-                      
+
                       const results = data.analysis.data_collection_results;
-                      
+
                       // Stock Status
                       if (results.StockStatus) {
                         console.log("Stock Status:", results.StockStatus.value);
                       }
-                      
+
                       // Restock Timeline
                       if (results.RestockTimeline) {
                         console.log("Restock Timeline:", results.RestockTimeline.value);
                       }
-                      
+
                       // Alternative Feedback
                       if (results.AlternativeFeedback) {
                         console.log("Alternative Options:", results.AlternativeFeedback.value);
                       }
-                      
+
                       console.log("\nTranscript Summary:", data.analysis.transcript_summary);
                       console.log("\nDetailed Conversation:");
                       data.transcript.forEach(turn => {

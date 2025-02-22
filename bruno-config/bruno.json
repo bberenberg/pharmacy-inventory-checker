@@ -1,0 +1,9 @@
+{
+  "version": "1",
+  "name": "Eleven Labs Hackathon",
+  "type": "collection",
+  "ignore": [
+    "node_modules",
+    ".git"
+  ]
+}

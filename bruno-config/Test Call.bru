@@ -1,0 +1,19 @@
+meta {
+  name: Test Call
+  type: http
+  seq: 2
+}
+
+post {
+  url: https://d2c8-142-154-212-250.ngrok-free.app/outbound-call
+  body: json
+  auth: none
+}
+
+headers {
+  Content-Type: application/json
+}
+
+body:json {
+  { "prompt": "You are Eric, an outbound car sales agent. You are calling to sell a new car to the customer. Be friendly and professional and answer all questions.", "first_message": "Hello Thor, my name is Eric, I heard you were looking for a new car! What model and color are you looking for?", "number": "+14088361690" }
+}

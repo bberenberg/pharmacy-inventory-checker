@@ -77,8 +77,7 @@ export default async function pharmacyRoutes(fastify) {
       return reply.send({
         success: true,
         data: {
-          apiKey: GOOGLE_MAPS_API_KEY,
-          defaultCenter: { lat: 40.7128, lng: -74.0060 }, // New York City as default
+          defaultCenter: { lat: 40.7128, lng: -74.0060 },
           defaultZoom: 13
         }
       });

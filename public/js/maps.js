@@ -66,6 +66,7 @@ export function displayPharmacies(pharmacies) {
                     <th>Address</th>
                     <th>Rating</th>
                     <th>Reviews</th>
+                    <th>Status</th>
                     ${document.getElementById('drug').value ? '<th>Medication</th>' : ''}
                 </tr>
             </thead>
@@ -75,6 +76,14 @@ export function displayPharmacies(pharmacies) {
     `;
 
     const tableBody = pharmacyListDiv.querySelector('tbody');
+    
+    // Define possible statuses
+    const statuses = [
+        { text: 'To Check', class: 'status-to-check' },
+        { text: 'Checking', class: 'status-checking' },
+        { text: 'In Stock', class: 'status-in-stock' },
+        { text: 'Out of Stock', class: 'status-out-of-stock' }
+    ];
     
     pharmacies.forEach(pharmacy => {
         const marker = addMarker(
@@ -89,12 +98,16 @@ export function displayPharmacies(pharmacies) {
         const drugName = document.getElementById('drug').value;
         const strength = document.getElementById('strength').value;
         
+        // Randomly select a status
+        const randomStatus = statuses[Math.floor(Math.random() * statuses.length)];
+        
         row.innerHTML = `
             <td>${pharmacy.index}</td>
             <td><strong>${pharmacy.name}</strong></td>
             <td>${pharmacy.address}</td>
-            <td>${pharmacy.rating ? `${pharmacy.rating}⭐` : 'N/A'}</td>
+            <td>${pharmacy.rating ? `${pharmacy.rating}` : 'N/A'}</td>
             <td>${pharmacy.userRatingsTotal || 'N/A'}</td>
+            <td><span class="status-lozenge ${randomStatus.class}">${randomStatus.text}</span></td>
             ${drugName ? `<td>${drugName}${strength ? ` - ${strength}` : ''}</td>` : ''}
         `;
 

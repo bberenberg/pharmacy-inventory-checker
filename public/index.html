@@ -69,6 +69,7 @@
         }
         .container {
             display: flex;
+            flex-wrap: wrap;
             gap: 20px;
         }
         .map-container {
@@ -76,6 +77,10 @@
         }
         .form-container {
             flex: 1;
+        }
+        .results-container {
+            flex: 1 1 100%;
+            margin-top: 20px;
         }
         .form-group input[disabled] {
             background-color: #f5f5f5;
@@ -142,6 +147,30 @@
         #quickTest:hover {
             background-color: #1976D2;
         }
+        .status-lozenge {
+            padding: 4px 8px;
+            border-radius: 12px;
+            font-size: 12px;
+            font-weight: 500;
+            text-align: center;
+            white-space: nowrap;
+        }
+        .status-to-check {
+            background-color: #E0E0E0;
+            color: #616161;
+        }
+        .status-checking {
+            background-color: #2196F3;
+            color: white;
+        }
+        .status-in-stock {
+            background-color: #4CAF50;
+            color: white;
+        }
+        .status-out-of-stock {
+            background-color: #F44336;
+            color: white;
+        }
     </style>
 </head>
 <body>
@@ -151,7 +180,7 @@
             <form id="addressForm">
                 <div class="form-group">
                     <label for="address">Your Address:</label>
-                    <input type="text" id="address" name="address" required placeholder="Enter your address">
+                    <input type="text" id="address" name="address" required placeholder="Near which address">
                 </div>
                 <div class="form-group">
                     <label for="drug">Medication:</label>
@@ -173,10 +202,12 @@
                 </div>
             </form>
             <div id="status"></div>
-            <div class="pharmacy-list" id="pharmacyList"></div>
         </div>
         <div class="map-container">
             <div id="map"></div>
+        </div>
+        <div class="results-container">
+            <div class="pharmacy-list" id="pharmacyList"></div>
         </div>
     </div>
 </body>

@@ -57,14 +57,33 @@ export function displayPharmacies(pharmacies) {
     
     pharmacyListDiv.innerHTML = `
         <h2>Nearby Pharmacies</h2>
+        <style>
+            .pharmacy-table {
+                table-layout: fixed;
+                width: 100%;
+            }
+            .pharmacy-table th:nth-child(1) { width: 25%; } /* Name */
+            .pharmacy-table th:nth-child(2) { width: 35%; } /* Address */
+            .pharmacy-table th:nth-child(3) { width: 12%; } /* Call Status */
+            .pharmacy-table th:nth-child(4) { width: 12%; } /* Inventory Status */
+            .pharmacy-table th:nth-child(5) { width: 10%; } /* Notes */
+            .pharmacy-table th:nth-child(6) { width: 6%; }  /* Action */
+            
+            .pharmacy-table td {
+                padding: 8px;
+                overflow: hidden;
+                text-overflow: ellipsis;
+                white-space: nowrap;
+            }
+        </style>
         <table class="pharmacy-table">
             <thead>
                 <tr>
-                    <th>#</th>
                     <th>Name</th>
                     <th>Address</th>
                     <th>Call Status</th>
                     <th>Inventory Status</th>
+                    <th>Notes</th>
                     <th>Action</th>
                 </tr>
             </thead>
@@ -98,11 +117,11 @@ export function displayPharmacies(pharmacies) {
         row.dataset.phoneNumber = pharmacy.phoneNumber;
         
         row.innerHTML = `
-            <td>${pharmacy.index}</td>
             <td><strong>${pharmacy.name}</strong></td>
             <td>${pharmacy.address}</td>
             <td><span class="status-lozenge ${statuses[0].class}" data-type="call">${statuses[0].text}</span></td>
             <td><span class="status-lozenge ${statuses[0].class}" data-type="inventory">${statuses[0].text}</span></td>
+            <td><span class="notes-field">-</span></td>
             <td>
                 <button class="call-button">Call</button>
             </td>

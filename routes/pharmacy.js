@@ -192,4 +192,51 @@ export default async function pharmacyRoutes(fastify) {
       });
     }
   });
+
+  // Add new endpoint to get nearby pharmacies
+  fastify.post("/nearby-pharmacies", async (request, reply) => {
+    const { location } = request.body;
+
+    if (!location || !location.lat || !location.lng) {
+      return reply.code(400).send({ 
+        success: false,
+        error: "Location is required" 
+      });
+    }
+
+    try {
+      const response = await mapsClient.placesNearby({
+        params: {
+          location: location,
+          radius: 5000, // 5km radius
+          type: 'pharmacy',
+          key: GOOGLE_MAPS_API_KEY
+        }
+      });
+
+      const pharmacies = response.data.results
+        .slice(0, 10)
+        .map((place, index) => ({
+          id: place.place_id,
+          name: place.name,
+          address: place.vicinity,
+          location: place.geometry.location,
+          rating: place.rating,
+          userRatingsTotal: place.user_ratings_total,
+          index: index + 1
+        }));
+
+      return reply.send({
+        success: true,
+        data: pharmacies
+      });
+    } catch (error) {
+      console.error("Error finding nearby pharmacies:", error);
+      return reply.code(500).send({
+        success: false,
+        error: "Failed to find nearby pharmacies",
+        details: error.message
+      });
+    }
+  });
 } 

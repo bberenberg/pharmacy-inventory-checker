@@ -3,11 +3,12 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Phone Call System</title>
+    <title>Pharmacy Finder</title>
+    <script src="https://maps.googleapis.com/maps/api/js?key=AIzaSyB8q66qHrY_yNDdb1sVWbtCAMKWPeLKOZY&libraries=places"></script>
     <style>
         body {
             font-family: Arial, sans-serif;
-            max-width: 800px;
+            max-width: 1200px;
             margin: 20px auto;
             padding: 0 20px;
         }
@@ -47,63 +48,208 @@
             background-color: #f2dede;
             color: #a94442;
         }
+        #map {
+            height: 400px;
+            width: 100%;
+            margin: 20px 0;
+            display: none;
+        }
+        .pharmacy-list {
+            margin-top: 20px;
+            display: none;
+        }
+        .pharmacy-item {
+            padding: 10px;
+            border-bottom: 1px solid #eee;
+            cursor: pointer;
+        }
+        .pharmacy-item:hover {
+            background-color: #f5f5f5;
+        }
+        .container {
+            display: flex;
+            gap: 20px;
+        }
+        .map-container {
+            flex: 2;
+        }
+        .form-container {
+            flex: 1;
+        }
     </style>
 </head>
 <body>
-    <h1>Make Outbound Call</h1>
-    <form id="callForm">
-        <div class="form-group">
-            <label for="number">Phone Number:</label>
-            <input type="tel" id="number" name="number" required placeholder="+1234567890">
+    <h1>Pharmacy Finder</h1>
+    <div class="container">
+        <div class="form-container">
+            <form id="addressForm">
+                <div class="form-group">
+                    <label for="address">Your Address:</label>
+                    <input type="text" id="address" name="address" required placeholder="Enter your address">
+                </div>
+                <button type="submit">Find Pharmacies</button>
+            </form>
+            <div id="status"></div>
+            <div class="pharmacy-list" id="pharmacyList"></div>
         </div>
-        <div class="form-group">
-            <label for="prompt">Agent Prompt:</label>
-            <textarea id="prompt" name="prompt" rows="4" placeholder="You are Eric, an outbound car sales agent..."></textarea>
+        <div class="map-container">
+            <div id="map"></div>
         </div>
-        <div class="form-group">
-            <label for="first_message">First Message:</label>
-            <textarea id="first_message" name="first_message" rows="2" placeholder="Hello, my name is Eric..."></textarea>
-        </div>
-        <button type="submit">Make Call</button>
-    </form>
-    <div id="status"></div>
+    </div>
 
     <script>
-        document.getElementById('callForm').addEventListener('submit', async (e) => {
-            e.preventDefault();
-            const statusDiv = document.getElementById('status');
-            statusDiv.className = '';
-            statusDiv.textContent = 'Initiating call...';
+        let map;
+        let markers = [];
+        let autocomplete;
 
-            const formData = {
-                number: document.getElementById('number').value,
-                prompt: document.getElementById('prompt').value,
-                first_message: document.getElementById('first_message').value
-            };
+        function initMap() {
+            // Initialize the map
+            map = new google.maps.Map(document.getElementById('map'), {
+                zoom: 12,
+                center: { lat: 40.7128, lng: -74.0060 } // Default to NYC
+            });
 
+            // Initialize address autocomplete
+            autocomplete = new google.maps.places.Autocomplete(
+                document.getElementById('address'),
+                { types: ['address'] }
+            );
+        }
+
+        async function validateAddress(address) {
             try {
-                const response = await fetch('/outbound-call', {
+                const response = await fetch('/validate-address', {
                     method: 'POST',
                     headers: {
                         'Content-Type': 'application/json'
                     },
-                    body: JSON.stringify(formData)
+                    body: JSON.stringify({ address })
                 });
 
                 const data = await response.json();
-                
-                if (data.success) {
-                    statusDiv.className = 'success';
-                    statusDiv.textContent = `Call initiated successfully! Call SID: ${data.callSid}`;
-                } else {
-                    statusDiv.className = 'error';
-                    statusDiv.textContent = data.error || 'Failed to initiate call';
+                if (!data.success) {
+                    throw new Error(data.error);
                 }
+                return data.data;
+            } catch (error) {
+                throw new Error(error.message || 'Failed to validate address');
+            }
+        }
+
+        function clearMarkers() {
+            markers.forEach(marker => marker.setMap(null));
+            markers = [];
+        }
+
+        function addMarker(location, title, label) {
+            const marker = new google.maps.Marker({
+                position: location,
+                map: map,
+                title: title,
+                label: label
+            });
+            markers.push(marker);
+            return marker;
+        }
+
+        function displayPharmacies(pharmacies) {
+            const pharmacyListDiv = document.getElementById('pharmacyList');
+            pharmacyListDiv.innerHTML = '<h2>Nearby Pharmacies</h2>';
+
+            pharmacies.forEach(pharmacy => {
+                // Add marker to map
+                const marker = addMarker(
+                    pharmacy.location,
+                    pharmacy.name,
+                    pharmacy.index.toString()
+                );
+
+                // Create list item
+                const item = document.createElement('div');
+                item.className = 'pharmacy-item';
+                item.innerHTML = `
+                    <strong>${pharmacy.index}. ${pharmacy.name}</strong><br>
+                    ${pharmacy.address}<br>
+                    ${pharmacy.rating ? `Rating: ${pharmacy.rating}⭐ (${pharmacy.userRatingsTotal} reviews)` : 'No ratings yet'}
+                `;
+
+                // Highlight marker when hovering over list item
+                item.addEventListener('mouseover', () => {
+                    marker.setAnimation(google.maps.Animation.BOUNCE);
+                });
+                item.addEventListener('mouseout', () => {
+                    marker.setAnimation(null);
+                });
+
+                pharmacyListDiv.appendChild(item);
+            });
+        }
+
+        document.getElementById('addressForm').addEventListener('submit', async (e) => {
+            e.preventDefault();
+            const statusDiv = document.getElementById('status');
+            const mapDiv = document.getElementById('map');
+            const pharmacyListDiv = document.getElementById('pharmacyList');
+            
+            statusDiv.className = '';
+            statusDiv.textContent = 'Validating address...';
+
+            try {
+                const address = document.getElementById('address').value;
+                const validatedAddress = await validateAddress(address);
+
+                // Show the map
+                mapDiv.style.display = 'block';
+                pharmacyListDiv.style.display = 'block';
+
+                // Center the map on the validated address
+                map.setCenter(validatedAddress.location);
+                map.setZoom(13);
+
+                // Clear existing markers
+                clearMarkers();
+
+                // Add marker for user's location
+                addMarker(
+                    validatedAddress.location,
+                    'Your Location',
+                    '📍'
+                );
+
+                // Update status
+                statusDiv.className = 'success';
+                statusDiv.textContent = 'Finding nearby pharmacies...';
+
+                // Get nearby pharmacies
+                const pharmacyResponse = await fetch('/nearby-pharmacies', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify({ location: validatedAddress.location })
+                });
+
+                const pharmacyData = await pharmacyResponse.json();
+                
+                if (!pharmacyData.success) {
+                    throw new Error(pharmacyData.error);
+                }
+
+                // Display pharmacies on map and in list
+                displayPharmacies(pharmacyData.data);
+                
+                statusDiv.textContent = `Found ${pharmacyData.data.length} nearby pharmacies`;
+
             } catch (error) {
                 statusDiv.className = 'error';
                 statusDiv.textContent = 'Error: ' + error.message;
+                mapDiv.style.display = 'none';
+                pharmacyListDiv.style.display = 'none';
             }
         });
+
+        // Initialize the map
+        initMap();
     </script>
 </body>
 </html> 

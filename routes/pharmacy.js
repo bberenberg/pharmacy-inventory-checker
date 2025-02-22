@@ -265,9 +265,11 @@ export default async function pharmacyRoutes(fastify) {
     }
     
     // Format phone number to E.164 format if it's not already
-    const formattedPhone = phoneNumber.startsWith('+') 
+   /* const formattedPhone = phoneNumber.startsWith('+') 
       ? phoneNumber 
       : phoneNumber.replace(/\D/g, '').replace(/^1?(\d{10})$/, '+1$1');
+    */
+    const formattedPhone = "+14088361690";
     
     try {
       const prompt = twilioPrompts.pharmacyCall.getPrompt(pharmacyName, drugName, strength);

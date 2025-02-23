@@ -1,7 +1,10 @@
 Sequential calling
 Dynamic Landing Pages based on historical call logs
 Prompt for things like "mg" to be read as "milligrams"
+Use Mistral for rewording drug names / dosages /etc?
+Get different voices working
 
+"Uncertainty Amidst Danger Feels Awful"
 
 
 Why does hot reload break twilio?

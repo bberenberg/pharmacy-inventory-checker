@@ -15,14 +15,10 @@ function initPostHog() {
 function setupFormHandler() {
     document.getElementById('addressForm').addEventListener('submit', async (e) => {
         e.preventDefault();
-        const statusDiv = document.getElementById('status');
         const mapDiv = document.getElementById('map');
         const initialLogo = document.getElementById('initialLogo');
         const headerLogo = document.querySelector('.header');
         const pharmacyListDiv = document.getElementById('pharmacyList');
-        
-        statusDiv.className = '';
-        statusDiv.textContent = 'Validating address...';
 
         // Track form submission
         posthog.capture('search_pharmacies', {

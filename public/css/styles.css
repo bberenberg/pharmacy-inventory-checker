@@ -36,22 +36,6 @@ button:hover {
     background-color: #45a049;
 }
 
-#status {
-    margin-top: 20px;
-    padding: 10px;
-    border-radius: 4px;
-}
-
-.success {
-    background-color: #dff0d8;
-    color: #3c763d;
-}
-
-.error {
-    background-color: #f2dede;
-    color: #a94442;
-}
-
 #map {
     height: 400px;
     width: 100%;
@@ -253,10 +237,6 @@ button:hover {
 }
 
 .header {
-    display: none;
-}
-
-.header.visible {
     display: flex;
     justify-content: space-between;
     align-items: center;
@@ -437,7 +417,11 @@ button:hover {
 
 /* Fix header visibility */
 .header {
-    display: none;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 15px 0;
+    margin-bottom: 20px;
 }
 
 .header.visible {

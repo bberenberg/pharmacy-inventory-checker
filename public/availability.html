@@ -5,7 +5,8 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Pill Patrol - Availability</title>
     <script src="https://maps.googleapis.com/maps/api/js?key=AIzaSyB8q66qHrY_yNDdb1sVWbtCAMKWPeLKOZY&libraries=places,marker"></script>
-    <script type="module" src="/js/app.js"></script>
+    <!-- <script type="module" src="/js/app.js"></script> -->
+    <script type="module" src="/js/availability.js"></script>
     <link rel="stylesheet" href="/css/styles.css">
     <style>
 
@@ -13,19 +14,35 @@
 </head>
 <body>
     <div class="header">
-        <img src="/images/logo.png" alt="Pill Patrol Logo" class="logo">
-        <h1>Pill Patrol</h1>
+        <div class="logo-container">
+            <a href="/">
+                <img src="/images/logo.png" alt="Pill Patrol Logo" class="logo">
+                <h1>Pill Patrol</h1>
+            </a>
+        </div>
 
-        <ul>
-            <li>
-                <a href="/availability">Inventory</a>
-            </li>
-        </ul>
+        <nav class="navigation-menu">
+            <ul>
+                <li>
+                    <a href="/">Home</a>
+                    <a href="/availability">Inventory</a>
+                </li>
+            </ul>
+        </nav>
     </div>
     <div class="container">
         <div class="form-container">
-
             <div id="status"></div>
+        </div>
+
+        <div class="menu">
+            <form id="availabilityMenu">
+                <select id="drug-picker" name="drug" required>
+                    <option value="" disabled selected>Select a Drug</option>
+                </select>
+
+                <input type="submit" value="Check Availability">
+             </form>
         </div>
 
         <div class="results-container">

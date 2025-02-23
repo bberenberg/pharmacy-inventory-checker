@@ -65,6 +65,16 @@ function setupFormHandler() {
             }
 
             currentPharmacies = pharmacyData.data;
+
+            // Add markers for each pharmacy
+            currentPharmacies.forEach((pharmacy, index) => {
+                addMarker(
+                    pharmacy.location,
+                    pharmacy.name,
+                    `${index + 1}`
+                );
+            });
+
             displayPharmacies(pharmacyData.data, isAuthenticated);
             
             // Track successful pharmacy search
@@ -101,13 +111,46 @@ async function initClerk() {
         if (isAuthenticated && savedState) {
             console.log('Restoring state immediately after auth');
             if (Date.now() - savedState.timestamp < 30 * 60 * 1000) {
+                // Hide intro and show map
+                const mapDiv = document.getElementById('map');
+                const initialLogo = document.getElementById('initialLogo');
+                const headerLogo = document.querySelector('.header');
+                const pharmacyListDiv = document.getElementById('pharmacyList');
+
+                initialLogo.style.display = 'none';
+                mapDiv.style.display = 'block';
+                headerLogo.style.display = 'flex';
+                pharmacyListDiv.style.display = 'block';
+
+                // Restore form values
                 document.getElementById('address').value = savedState.address;
                 document.getElementById('drug').value = savedState.drug;
                 document.getElementById('strength').value = savedState.strength;
                 
+                // Restore map and pharmacies
                 if (savedState.currentPharmacies?.length > 0) {
                     currentPharmacies = savedState.currentPharmacies;
-                    displayPharmacies(currentPharmacies, isAuthenticated);
+                    
+                    // Re-center map on the saved address
+                    validateAddress(savedState.address).then(validatedAddress => {
+                        map.setCenter(validatedAddress.location);
+                        map.setZoom(13);
+                        clearMarkers();
+                        
+                        // Add the user's location marker
+                        addMarker(validatedAddress.location, 'Your Location', '📍');
+                        
+                        // Add markers for each pharmacy
+                        currentPharmacies.forEach((pharmacy, index) => {
+                            addMarker(
+                                pharmacy.location,
+                                pharmacy.name,
+                                `${index + 1}`
+                            );
+                        });
+                        
+                        displayPharmacies(currentPharmacies, isAuthenticated);
+                    });
                 }
             }
             localStorage.removeItem('savedFormState');

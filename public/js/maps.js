@@ -53,7 +53,7 @@ export function addMarker(location, title, label) {
     return marker;
 }
 
-export function displayPharmacies(pharmacies) {
+export function displayPharmacies(pharmacies, isAuthenticated) {
     const pharmacyListDiv = document.getElementById('pharmacyList');
     const tableBody = document.getElementById('pharmacyTableBody');
     
@@ -75,99 +75,35 @@ export function displayPharmacies(pharmacies) {
     ];
     
     pharmacies.forEach((pharmacy) => {
-        const marker = addMarker(
-            pharmacy.location,
-            pharmacy.name,
-            pharmacy.index.toString()
-        );
-
         const row = document.createElement('tr');
         row.className = 'pharmacy-row';
         row.dataset.phoneNumber = pharmacy.phoneNumber;
         
+        // Create the basic row structure
         row.innerHTML = `
             <td><strong>${pharmacy.name}</strong></td>
             <td>${pharmacy.address}</td>
             <td><span class="status-lozenge ${statuses[0].class}" data-type="call">${statuses[0].text}</span></td>
             <td><span class="status-lozenge ${statuses[0].class}" data-type="inventory">${statuses[0].text}</span></td>
             <td><span class="notes-field">-</span></td>
-            <td>
-                <button class="call-button">Call</button>
-            </td>
         `;
 
-        const callStatusElement = row.querySelector('.status-lozenge[data-type="call"]');
-        const inventoryStatusElement = row.querySelector('.status-lozenge[data-type="inventory"]');
-        const callButton = row.querySelector('.call-button');
-
-        callButton.addEventListener('click', async () => {
-            try {
-                // Disable button during call
-                callButton.disabled = true;
-                
-                // Always reset both statuses at the start of a new call
-                callStatusElement.className = `status-lozenge ${statuses[1].class}`;
-                callStatusElement.textContent = statuses[1].text;
-                inventoryStatusElement.className = `status-lozenge ${statuses[1].class}`; // Set to "Checking"
-                inventoryStatusElement.textContent = statuses[1].text;
-                
-                // Clear any existing notes
-                const notesField = row.querySelector('.notes-field');
-                notesField.textContent = '-';
-
-                const drugName = document.getElementById('drug').value;
-                const strength = document.getElementById('strength').value;
-                const phoneNumber = row.dataset.phoneNumber;
-                
-                const response = await fetch('/call-pharmacy', {
-                    method: 'POST',
-                    headers: {
-                        'Content-Type': 'application/json'
-                    },
-                    body: JSON.stringify({
-                        pharmacyName: pharmacy.name,
-                        pharmacyAddress: pharmacy.address,
-                        drugName,
-                        strength,
-                        phoneNumber
-                    })
-                });
-
-                const data = await response.json();
-                if (!data.success) {
-                    throw new Error(data.error);
-                }
-
-                // Start polling for this call's status
-                const callSid = data.callSid;
-                if (callSid) {
-                    startPolling(callSid, {
-                        callStatusElement,
-                        inventoryStatusElement,
-                        notesField: row.querySelector('.notes-field')
-                    });
-                }
-
-            } catch (error) {
-                console.error('Error:', error);
-                callStatusElement.className = `status-lozenge ${statuses[3].class}`;
-                callStatusElement.textContent = statuses[3].text;
-                inventoryStatusElement.className = `status-lozenge ${statuses[6].class}`;
-                inventoryStatusElement.textContent = statuses[6].text;
-            } finally {
-                callButton.disabled = false;
-            }
-        });
-
-        row.addEventListener('mouseover', () => {
-            marker.setAnimation(google.maps.Animation.BOUNCE);
-            row.classList.add('highlighted');
-        });
-        row.addEventListener('mouseout', () => {
-            marker.setAnimation(null);
-            row.classList.remove('highlighted');
-        });
-
+        // Add the action cell with auth-aware button
+        const actionCell = document.createElement('td');
+        const callButton = document.createElement('button');
+        callButton.className = 'call-button';
+        
+        if (isAuthenticated) {
+            callButton.textContent = 'Call';
+            callButton.onclick = () => initiateCall(pharmacy);
+        } else {
+            callButton.textContent = 'Sign in to Call';
+            callButton.onclick = () => window.Clerk.openSignIn();
+        }
+        
+        actionCell.appendChild(callButton);
+        row.appendChild(actionCell);
+        
         tableBody.appendChild(row);
     });
 }

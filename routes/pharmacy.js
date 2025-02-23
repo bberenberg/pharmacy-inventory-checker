@@ -33,7 +33,20 @@ export default async function pharmacyRoutes(fastify) {
     return deg * (Math.PI / 180);
   }
 
-  // New endpoint to validate and geocode an address
+  // Helper function to check auth
+  const requireAuth = async (request, reply) => {
+    const { auth } = request;
+    if (!auth?.userId) {
+      reply.code(401).send({ 
+        success: false, 
+        error: 'Authentication required' 
+      });
+      return false;
+    }
+    return true;
+  };
+
+  // Public route - keep as is
   fastify.post("/validate-address", async (request, reply) => {
     const { address } = request.body;
 
@@ -75,7 +88,7 @@ export default async function pharmacyRoutes(fastify) {
     }
   });
 
-  // New endpoint to get map configuration
+  // Public route - keep as is
   fastify.get("/map-config", async (request, reply) => {
     try {
       return reply.send({
@@ -272,9 +285,10 @@ export default async function pharmacyRoutes(fastify) {
     }
   });
 
-
-  // Add this new endpoint
-  fastify.post("/call-pharmacy", async (request, reply) => {
+  // Protected route - add auth check
+  fastify.post("/outbound-call", async (request, reply) => {
+    if (!await requireAuth(request, reply)) return;
+    
     const { pharmacyName, pharmacyAddress, drugName, strength, phoneNumber } = request.body;
 
     // Track pharmacy call attempt
@@ -393,9 +407,36 @@ export default async function pharmacyRoutes(fastify) {
     }
   });
 
-  // Update the availability endpoint to include drug dose information
-  fastify.post("/api/availability", async (request, reply) => {
-    const { drugId } = request.body;
+  // Protected route - add auth check
+  fastify.get("/call-status/:callSid", async (request, reply) => {
+    if (!await requireAuth(request, reply)) return;
+    
+    const { callSid } = request.params;
+
+    try {
+      const response = await fetch(`https://${request.headers.host}/call-status/${callSid}`, {
+        method: 'GET',
+        headers: {
+          'Authorization': `Bearer ${request.auth.token}`
+        }
+      });
+
+      const data = await response.json();
+      return reply.send(data);
+    } catch (error) {
+      console.error("Error fetching call status:", error);
+      return reply.code(500).send({
+        success: false,
+        error: "Failed to fetch call status"
+      });
+    }
+  });
+
+  // Change the route path from "/availability" to "/api/availability"
+  fastify.get("/api/availability", async (request, reply) => {
+    if (!await requireAuth(request, reply)) return;
+    
+    const { drugId } = request.query;
 
     if (!drugId) {
       return reply.code(400).send({
@@ -413,10 +454,10 @@ export default async function pharmacyRoutes(fastify) {
           pda.available_from,
           pda.quantity,
           pda.alternative_feedback,
-          d.dose  -- Add the dose from the drug table
+          d.dose
         FROM pharmacy p
         JOIN pharmacy_drug_availability pda ON p.id = pda.pharmacy_id
-        JOIN drug d ON d.id = pda.drug_id  -- Join with drug table
+        JOIN drug d ON d.id = pda.drug_id
         WHERE pda.drug_id = ?
         ORDER BY pda.available_from ASC
       `, [drugId]);

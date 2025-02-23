@@ -16,6 +16,18 @@
             apiHost: '{{POSTHOG_HOST}}'
         };
     </script>
+    <script>
+        // Initialize Clerk configuration object first
+        window.clerkConfig = {
+            publishableKey: '{{CLERK_PUBLISHABLE_KEY}}'
+        };
+    </script>
+    <script 
+        async
+        crossorigin="anonymous"
+        data-clerk-publishable-key="{{CLERK_PUBLISHABLE_KEY}}"
+        src="https://cdn.jsdelivr.net/npm/@clerk/clerk-js@4/dist/clerk.browser.js"
+    ></script>
 </head>
 <body>
     <!-- Header will be inserted here -->
@@ -44,7 +56,9 @@
                 </div>
                 <div class="button-group">
                     <button type="submit">Find Pharmacies</button>
-                    <button type="button" id="quickTest">Demo</button>
+                    <button type="button" id="quickTest">
+                        
+                    </button>
                 </div>
             </form>
         </div>

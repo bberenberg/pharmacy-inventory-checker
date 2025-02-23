@@ -12,6 +12,7 @@ import sqlite3 from 'sqlite3';
 import { open } from 'sqlite';
 import pkg from 'posthog-node';
 import fs from 'fs/promises';
+import { clerkPlugin } from '@clerk/fastify';
 const { PostHog } = pkg;
 
 let db;
@@ -31,6 +32,13 @@ const {
 
 const POSTHOG_API_KEY = process.env.POSTHOG_API_KEY;
 const POSTHOG_HOST = process.env.POSTHOG_HOST || 'https://app.posthog.com';
+
+// Add this to verify the keys are loaded
+const { CLERK_PUBLISHABLE_KEY, CLERK_SECRET_KEY } = process.env;
+if (!CLERK_PUBLISHABLE_KEY || !CLERK_SECRET_KEY) {
+  console.error("Missing Clerk environment variables");
+  throw new Error("Missing required environment variables: CLERK_PUBLISHABLE_KEY or CLERK_SECRET_KEY");
+}
 
 if (
   !ELEVENLABS_API_KEY ||
@@ -129,18 +137,56 @@ function insertCallLog(db, {
 fastify.get('/', async (request, reply) => {
   try {
     let html = await fs.readFile('./public/index.html', 'utf-8');
+    
+    console.log('Debug - CLERK_PUBLISHABLE_KEY:', CLERK_PUBLISHABLE_KEY);
+    console.log('Debug - Key length:', CLERK_PUBLISHABLE_KEY?.length);
+    console.log('Debug - Key format check:', CLERK_PUBLISHABLE_KEY?.startsWith('pk_test_'));
 
     // Replace placeholders with actual values
     html = html
-      .replace('{{POSTHOG_API_KEY}}', POSTHOG_API_KEY)
-      .replace('{{POSTHOG_HOST}}', POSTHOG_HOST)
-      .replace('{{GOOGLE_MAPS_API_KEY}}', process.env.GOOGLE_MAPS_API_KEY_FRONTEND);
+      .replace(/{{POSTHOG_API_KEY}}/g, POSTHOG_API_KEY)
+      .replace(/{{POSTHOG_HOST}}/g, POSTHOG_HOST)
+      .replace(/{{GOOGLE_MAPS_API_KEY}}/g, process.env.GOOGLE_MAPS_API_KEY_FRONTEND)
+      .replace(/{{CLERK_PUBLISHABLE_KEY}}/g, CLERK_PUBLISHABLE_KEY);
+
+    // Debug - Check final HTML for Clerk key
+    const debugHtml = html.match(/publishableKey["']:\s*['"]([^'"]+)['"]/);
+    console.log('Debug - Final key in HTML:', debugHtml?.[1]);
 
     reply.type('text/html').send(html);
   } catch (error) {
     console.error('Error serving index.html:', error);
     reply.code(500).send('Error loading page');
   }
+});
+
+// Register Clerk before the static file handling
+fastify.register(clerkPlugin, {
+  publishableKey: CLERK_PUBLISHABLE_KEY,
+  secretKey: CLERK_SECRET_KEY,
+  // Public routes that don't require authentication
+  publicRoutes: [
+    '/',                         // Main search page
+    '/availability',             // Availability page
+    '/api/health',               // Health check
+    '/components/*',             // Header and other components
+    '/css/*',                    // CSS files
+    '/js/*',                     // JavaScript files
+    '/images/*',                 // Images
+    '/validate-address',         // Address validation
+    '/map-config',               // Map configuration
+    '/api/drugs',                // Drug list
+    '/api/availability',         // Drug availability
+    '/nearby-pharmacies',        // Pharmacy search
+    '/search-pharmacies',        // Pharmacy search
+    '/twilio/inbound_call',      // Twilio webhook
+    '/outbound-media-stream'     // WebSocket endpoint
+  ],
+  // Only protect routes related to making calls
+  protectedRoutes: [
+    '/outbound-call',           // Making calls
+    '/call-status/*'            // Checking call status
+  ]
 });
 
 // Register static file handling first
@@ -170,6 +216,12 @@ const posthog = new PostHog(
 
 // Add PostHog to fastify instance
 fastify.decorate('posthog', posthog);
+
+// Store for pending call prompts
+const pendingCallPrompts = new Map();
+
+// After creating the Map
+fastify.decorate('pendingCallPrompts', pendingCallPrompts);
 
 const PORT = process.env.PORT || 8000;
 
@@ -218,51 +270,6 @@ async function getSignedUrl() {
     throw error;
   }
 }
-
-// Store for pending call prompts
-const pendingCallPrompts = new Map();
-
-// Modified outbound-call route
-fastify.post("/outbound-call", async (request, reply) => {
-  const { number, prompt, first_message, pharmacyInfo, drugInfo } = request.body;
-  console.log("Outbound call request body:", request.body); // Debug log 1
-
-  if (!number) {
-    return reply.code(400).send({ error: "Phone number is required" });
-  }
-
-  try {
-    // Get the base URL from environment or request
-    const baseUrl = PUBLIC_URL || `https://${request.headers.host}`;
-
-    // Make the call without prompts in URL
-    const call = await twilioClient.calls.create({
-      to: number,
-      from: TWILIO_PHONE_NUMBER,
-      url: `${baseUrl}/twilio/inbound_call`,
-    });
-
-    // Store prompts mapped to callSid
-    const callInfo = {
-      prompt,
-      first_message,
-      pharmacyInfo,
-      drugInfo
-    };
-    console.log("Storing callInfo for sid", call.sid, ":", callInfo); // Debug log 2
-    pendingCallPrompts.set(call.sid, callInfo);
-
-    // Cleanup after 5 minutes in case call never connects
-    setTimeout(() => {
-      pendingCallPrompts.delete(call.sid);
-    }, 300000); // 5 minutes
-
-    return reply.send({ success: true, callSid: call.sid });
-  } catch (error) {
-    console.error("Error initiating call:", error);
-    return reply.code(500).send({ error: error.message });
-  }
-});
 
 // TwiML route for outbound calls
 fastify.all("/outbound-call-twiml", async (request, reply) => {
@@ -658,59 +665,6 @@ fastify.register(async fastifyInstance => {
       });
     }
   );
-});
-
-// Update the call-status endpoint
-fastify.get("/call-status/:callSid", async (request, reply) => {
-  const { callSid } = request.params;
-
-  try {
-    const callLog = await db.get(`
-      SELECT
-        cl.call_status,
-        cl.stock_status,
-        cl.restock_date,
-        cl.alternative_feedback,
-        pda.quantity
-      FROM call_log cl
-      LEFT JOIN pharmacy_drug_availability pda
-        ON pda.pharmacy_id = cl.pharmacy_id
-        AND pda.drug_id = cl.drug_id
-      WHERE cl.call_sid = ?
-    `, [callSid]);
-
-    if (!callLog) {
-      return reply.send({
-        success: true,
-        data: {
-          status: 'pending'
-        }
-      });
-    }
-
-    // Only include stockStatus if call is completed
-    const response = {
-      success: true,
-      data: {
-        status: callLog.call_status,
-        restockDate: callLog.restock_date,
-        alternativeFeedback: callLog.alternative_feedback
-      }
-    };
-
-    // Only add stockStatus if call is completed
-    if (callLog.call_status === 'completed') {
-      response.data.stockStatus = callLog.quantity > 0 || callLog.stock_status === 1;
-    }
-
-    return reply.send(response);
-  } catch (error) {
-    console.error('Error fetching call status:', error);
-    return reply.code(500).send({
-      success: false,
-      error: 'Failed to fetch call status'
-    });
-  }
 });
 
 // Start the Fastify server

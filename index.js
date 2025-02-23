@@ -65,6 +65,11 @@ function getDrug(db, name) {
   return db.get('SELECT * FROM drug WHERE name LIKE ?', [`%${name}%`]);
 }
 
+function getAllDrugs(db, name) {
+  return db.all('SELECT * FROM drug');
+}
+
+
 function insertOrUpdateAvailability(db, drugId, pharmacyId, quantity) {
   return db.run(`
     INSERT INTO pharmacy_drug_availability
@@ -91,6 +96,13 @@ const PORT = process.env.PORT || 8000;
 // Change the root route to a different path for API health check
 fastify.get("/api/health", async (_, reply) => {
   reply.send({ message: "Server is running" });
+});
+
+fastify.get("/api/drugs", async (_, reply) => {
+  // render html page
+  const drugs = await getAllDrugs(db);
+
+  return reply.send({ drugs });
 });
 
 fastify.get("/availability", async (_, reply) => {
@@ -277,7 +289,7 @@ fastify.register(async fastifyInstance => {
           // Add voice_id parameter to the WebSocket URL
           const wsUrl = new URL(signedUrl);
           wsUrl.searchParams.append('voice_id', 'tvWD4i07Hg5L4uEvbxYV');
-          
+
           elevenLabsWs = new WebSocket(wsUrl.toString());
 
           elevenLabsWs.on("open", () => {
@@ -285,7 +297,7 @@ fastify.register(async fastifyInstance => {
 
             // Get stored prompts
             const storedPrompts = pendingCallPrompts.get(callSid);
-            
+
             if (storedPrompts) {
               // Inject prompts into conversation config
               customParameters = {
@@ -504,10 +516,10 @@ fastify.register(async fastifyInstance => {
 
                       if (storedCallInfo?.pharmacyInfo?.id && storedCallInfo?.drugInfo?.id) {
                         insertOrUpdateAvailability(
-                          db, 
-                          storedCallInfo.drugInfo.id, 
-                          storedCallInfo.pharmacyInfo.id, 
-                          quantity 
+                          db,
+                          storedCallInfo.drugInfo.id,
+                          storedCallInfo.pharmacyInfo.id,
+                          quantity
                         ).then(() => {
                           console.log('Availability updated for', {
                             pharmacy: storedCallInfo.pharmacyInfo.name,

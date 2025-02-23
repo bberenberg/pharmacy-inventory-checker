@@ -8,9 +8,6 @@
     <!-- <script type="module" src="/js/app.js"></script> -->
     <script type="module" src="/js/availability.js"></script>
     <link rel="stylesheet" href="/css/styles.css">
-    <style>
-
-    </style>
 </head>
 <body>
     <div class="header">
@@ -46,16 +43,15 @@
         </div>
 
         <div class="results-container">
-            <div class="pharmacy-list" id="pharmacyList">
-                <h2>Nearby Pharmacies</h2>
+            <div class="pharmacy-list" id="availabilityList">
+                <h2>Availability for <span id="desiredMedication"></span></h2>
                 <table class="pharmacy-table">
                     <thead>
                         <tr>
-                            <th>Name</th>
+                            <th>Pharmacy</th>
                             <th>Address</th>
-                            <th>Call Status</th>
-                            <th>Inventory Status</th>
-                            <th>Notes</th>
+                            <th>Phone number</th>
+                            <th>Available from</th>
                             <th>Action</th>
                         </tr>
                     </thead>

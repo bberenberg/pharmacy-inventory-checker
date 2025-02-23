@@ -9,6 +9,47 @@ function getDrugs() {
         });
 }
 
+export function displayAvailability(availabilities) {
+    const pharmacyListDiv = document.getElementById('availabilityList');
+    const tableBody = document.getElementById('pharmacyTableBody');
+
+    const selectElement = document.getElementById('drug-picker');
+
+    if (selectElement) {
+        const selectedOption = selectElement.options[selectElement.selectedIndex];
+        const selectedText = selectedOption.text;
+        document.getElementById('desiredMedication').innerText = selectedText;
+    }
+
+    // Show the pharmacy list container
+    pharmacyListDiv.style.display = 'block';
+
+    // Clear existing rows
+    tableBody.innerHTML = '';
+
+    availabilities.forEach((availability) => {
+        console.log("inserting", availability);
+        const row = document.createElement('tr');
+        row.className = 'pharmacy-row';
+
+        const {
+            pharmacy_name, address, phone, available_from
+        } = availability;
+
+        row.innerHTML = `
+            <td><strong>${pharmacy_name}</strong></td>
+            <td>${address}</td>
+            <td>${phone}</td>
+            <td>${available_from}</td>
+            <td>
+                <button class="call-button">Call</button>
+            </td>
+        `;
+
+        tableBody.appendChild(row);
+    });
+}
+
 window.addEventListener('load', () => {
     document.getElementById('availabilityMenu').addEventListener('submit', async (e) => {
         e.preventDefault();
@@ -28,7 +69,7 @@ window.addEventListener('load', () => {
                 return response.json();
             })
             .then((data) => {
-                console.log('Availability:', data);
+                displayAvailability(data.availability);
             })
             .catch((error) => {
                 console.error('Error fetching availability:', error);
@@ -38,8 +79,6 @@ window.addEventListener('load', () => {
     const selectElement = document.getElementById("drug-picker");
     getDrugs()
         .then((data) => {
-            console.log('Drugs:', data);
-
             data.drugs.forEach(item => {
                 const option = document.createElement("option");
                 option.value = item.id; // Adjust as per your API data structure

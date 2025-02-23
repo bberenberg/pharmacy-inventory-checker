@@ -76,6 +76,21 @@ function getAllDrugs(db, name) {
   return db.all('SELECT * FROM drug');
 }
 
+function getDrugByAvailability(db, drugId) {
+  return db.all(`
+    SELECT
+      p.name AS pharmacy_name,
+      p.address,
+      p.phone,
+      pda.quantity,
+      pda.available_from
+    FROM drug d
+    JOIN pharmacy_drug_availability pda ON d.id = pda.drug_id
+    JOIN pharmacy p ON p.id = pda.pharmacy_id
+    WHERE d.id = ?
+    ORDER BY pda.available_from ASC, pda.quantity DESC;
+  `, [drugId]);
+}
 
 function insertOrUpdateAvailability(db, drugId, pharmacyId, quantity) {
   return db.run(`
@@ -112,17 +127,17 @@ function insertCallLog(db, {
 
 // Add this route before the static file handling
 fastify.get('/', async (request, reply) => {
-    try {
-        let html = await fs.readFile('./public/index.html', 'utf-8');
-        
-        // Replace placeholders with actual values
-        html = html.replace('{{POSTHOG_API_KEY}}', POSTHOG_API_KEY)
-                  .replace('{{POSTHOG_HOST}}', POSTHOG_HOST);
-        
-        reply.type('text/html').send(html);
-    } catch (error) {
-        reply.code(500).send('Error loading page');
-    }
+  try {
+    let html = await fs.readFile('./public/index.html', 'utf-8');
+
+    // Replace placeholders with actual values
+    html = html.replace('{{POSTHOG_API_KEY}}', POSTHOG_API_KEY)
+      .replace('{{POSTHOG_HOST}}', POSTHOG_HOST);
+
+    reply.type('text/html').send(html);
+  } catch (error) {
+    reply.code(500).send('Error loading page');
+  }
 });
 
 // Register static file handling first
@@ -158,6 +173,14 @@ fastify.get("/api/drugs", async (_, reply) => {
   const drugs = await getAllDrugs(db);
 
   return reply.send({ drugs });
+});
+
+fastify.post("/api/availability", async (request, reply) => {
+  const params = request.body;
+  const { drug_id } = params;
+
+  const availability = await getDrugByAvailability(db, drug_id);
+  return reply.send({ availability });
 });
 
 fastify.get("/availability", async (_, reply) => {
@@ -637,18 +660,18 @@ fastify.register(async fastifyInstance => {
 // Update the call-status endpoint
 fastify.get("/call-status/:callSid", async (request, reply) => {
   const { callSid } = request.params;
-  
+
   try {
     const callLog = await db.get(`
-      SELECT 
+      SELECT
         cl.call_status,
         cl.stock_status,
         cl.restock_date,
         cl.alternative_feedback,
         pda.quantity
       FROM call_log cl
-      LEFT JOIN pharmacy_drug_availability pda 
-        ON pda.pharmacy_id = cl.pharmacy_id 
+      LEFT JOIN pharmacy_drug_availability pda
+        ON pda.pharmacy_id = cl.pharmacy_id
         AND pda.drug_id = cl.drug_id
       WHERE cl.call_sid = ?
     `, [callSid]);
@@ -688,7 +711,7 @@ fastify.get("/call-status/:callSid", async (request, reply) => {
 });
 
 // Start the Fastify server
-fastify.listen({ 
+fastify.listen({
   port: PORT,
   host: '0.0.0.0'
 }, err => {

@@ -100,7 +100,9 @@ async function initClerk() {
         console.log('Found saved state before load:', savedState);
 
         await window.Clerk.load({
-            publishableKey: window.clerkConfig.publishableKey
+            publishableKey: window.clerkConfig.publishableKey,
+            afterSignIn: (user) => window.location.href = document.referrer || '/',
+            afterSignUp: (user) => window.location.href = document.referrer || '/',
         });
         
         console.log('Clerk initialized, checking initial auth state');

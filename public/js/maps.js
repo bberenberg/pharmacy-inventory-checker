@@ -97,8 +97,13 @@ export function displayPharmacies(pharmacies, isAuthenticated) {
             callButton.textContent = 'Call';
             callButton.onclick = () => initiateCall(pharmacy);
         } else {
+            console.log('Creating sign in button');
             callButton.textContent = 'Sign in to Call';
-            callButton.onclick = () => window.Clerk.openSignIn();
+            callButton.onclick = (e) => {
+                console.log('Sign in button clicked');
+                e.preventDefault();
+                handleSignIn();
+            };
         }
         
         actionCell.appendChild(callButton);

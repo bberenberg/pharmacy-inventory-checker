@@ -434,8 +434,6 @@ export default async function pharmacyRoutes(fastify) {
 
   // Change the route path from "/availability" to "/api/availability"
   fastify.get("/api/availability", async (request, reply) => {
-    if (!await requireAuth(request, reply)) return;
-    
     const { drugId } = request.query;
 
     if (!drugId) {

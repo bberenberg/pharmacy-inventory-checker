@@ -268,4 +268,37 @@ function updateCallStatus(data, elements) {
         has_restock_date: !!data.restockDate,
         has_alternative: !!data.alternativeFeedback
     });
+}
+
+export function displayAvailabilityResults(pharmacies, drugsData) {
+    const tableBody = document.getElementById('pharmacyTableBody');
+    
+    // Clear existing rows
+    tableBody.innerHTML = '';
+    
+    pharmacies.forEach((pharmacy) => {
+        const row = document.createElement('tr');
+        row.className = 'pharmacy-row';
+        
+        // Format the date nicely
+        const date = new Date(pharmacy.available_from);
+        const formattedDate = date.toLocaleDateString('en-US', {
+            year: 'numeric',
+            month: 'short',
+            day: 'numeric',
+            hour: '2-digit',
+            minute: '2-digit'
+        });
+        
+        row.innerHTML = `
+            <td><strong>${pharmacy.name}</strong></td>
+            <td>${pharmacy.address}</td>
+            <td>${pharmacy.phone || 'Not available'}</td>
+            <td>${pharmacy.dose}</td>
+            <td>${pharmacy.quantity > 0 ? 'In Stock' : 'Out of Stock'}</td>
+            <td>${formattedDate}</td>
+        `;
+
+        tableBody.appendChild(row);
+    });
 } 

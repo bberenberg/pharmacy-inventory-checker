@@ -6,6 +6,13 @@ function getDrugs() {
                 throw new Error('Failed to fetch drugs');
             }
             return response.json();
+        })
+        .then((data) => {
+            // Ensure we're returning the drugs array from the response
+            if (!data.drugs || !Array.isArray(data.drugs)) {
+                throw new Error('Invalid drug data received from server');
+            }
+            return data.drugs;
         });
 }
 
@@ -50,43 +57,134 @@ export function displayAvailability(availabilities) {
     });
 }
 
-window.addEventListener('load', () => {
-    document.getElementById('availabilityMenu').addEventListener('submit', async (e) => {
-        e.preventDefault();
-        const drugId = document.getElementById('drug-picker').value;
+// New file to handle availability page functionality
+import { displayAvailabilityResults } from './maps.js';
 
-        fetch('/api/availability', {
-            method: 'POST',
-            headers: {
-                'Content-Type': 'application/json'
-            },
-            body: JSON.stringify({ drug_id: drugId })
-        })
-            .then((response) => {
-                if (!response.ok) {
-                    throw new Error('Failed to fetch availability');
-                }
-                return response.json();
-            })
-            .then((data) => {
-                displayAvailability(data.availability);
-            })
-            .catch((error) => {
-                console.error('Error fetching availability:', error);
+async function setupAvailabilityHandler() {
+    const drugPicker = document.getElementById('drug-picker');
+    const dosePicker = document.getElementById('dose-picker');
+    const statusDiv = document.getElementById('status');
+    
+    // Store all drugs data
+    let drugsData = [];
+    let currentPharmacies = [];
+    
+    // Load drugs on page load
+    try {
+        drugsData = await getDrugs();
+        
+        // Get unique drug names for the first dropdown
+        const uniqueDrugs = [...new Set(drugsData.map(drug => drug.name))];
+        uniqueDrugs.sort().forEach(drugName => {
+            const option = document.createElement('option');
+            option.value = drugName;
+            option.textContent = drugName;
+            drugPicker.appendChild(option);
+        });
+    } catch (error) {
+        statusDiv.className = 'error';
+        statusDiv.textContent = 'Error loading medications: ' + error.message;
+    }
+
+    // Function to fetch and display availability
+    async function fetchAvailability(drugName, selectedDose = null) {
+        try {
+            statusDiv.className = 'info';
+            statusDiv.textContent = 'Checking availability...';
+
+            // Get all drug IDs for the selected medication
+            const drugIds = drugsData
+                .filter(drug => drug.name === drugName && (!selectedDose || drug.dose === selectedDose))
+                .map(drug => drug.id);
+
+            // Fetch availability for all doses of this drug
+            const promises = drugIds.map(drugId => 
+                fetch('/api/availability', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ drugId })
+                }).then(r => r.json())
+            );
+
+            const results = await Promise.all(promises);
+            
+            // Combine and flatten results
+            currentPharmacies = results
+                .filter(r => r.success)
+                .flatMap(r => r.pharmacies);
+
+            // Update display
+            document.getElementById('desiredMedication').textContent = 
+                selectedDose ? `${drugName} ${selectedDose}` : drugName;
+
+            displayAvailabilityResults(currentPharmacies, drugsData);
+            
+            statusDiv.className = 'success';
+            statusDiv.textContent = `Found ${currentPharmacies.length} pharmacies with availability information`;
+
+        } catch (error) {
+            statusDiv.className = 'error';
+            statusDiv.textContent = 'Error: ' + error.message;
+        }
+    }
+
+    // Handle drug selection
+    drugPicker.addEventListener('change', async () => {
+        const selectedDrug = drugPicker.value;
+        
+        if (selectedDrug) {
+            // Show results when a drug is selected
+            availabilityList.style.display = 'block';
+            dosePicker.innerHTML = '<option value="" disabled selected>Filter by Dose</option>';
+            
+            // Get doses for selected drug
+            const doses = drugsData
+                .filter(drug => drug.name === selectedDrug)
+                .map(drug => drug.dose);
+            
+            // Add "All Doses" option
+            const allOption = document.createElement('option');
+            allOption.value = '';
+            allOption.textContent = 'All Doses';
+            dosePicker.appendChild(allOption);
+            
+            doses.sort().forEach(dose => {
+                const option = document.createElement('option');
+                option.value = dose;
+                option.textContent = dose;
+                dosePicker.appendChild(option);
             });
+            
+            dosePicker.disabled = false;
+            
+            // Fetch availability for all doses
+            await fetchAvailability(selectedDrug);
+        } else {
+            dosePicker.disabled = true;
+            currentPharmacies = [];
+            displayAvailabilityResults([], drugsData);
+        }
     });
 
-    const selectElement = document.getElementById("drug-picker");
-    getDrugs()
-        .then((data) => {
-            data.drugs.forEach(item => {
-                const option = document.createElement("option");
-                option.value = item.id; // Adjust as per your API data structure
-                option.textContent = item.name; // Adjust as per your API data structure
-                selectElement.appendChild(option);
-            });
-        })
-        .catch((error) => {
-            console.error('Error fetching drugs:', error);
-        });
-});
+    // Handle dose filtering
+    dosePicker.addEventListener('change', () => {
+        const selectedDrug = drugPicker.value;
+        const selectedDose = dosePicker.value;
+        
+        if (selectedDrug) {
+            if (selectedDose) {
+                // Filter existing results by dose
+                const filteredPharmacies = currentPharmacies.filter(
+                    pharmacy => pharmacy.dose === selectedDose
+                );
+                displayAvailabilityResults(filteredPharmacies, drugsData);
+            } else {
+                // Show all doses again
+                displayAvailabilityResults(currentPharmacies, drugsData);
+            }
+        }
+    });
+}
+
+// Initialize when document is ready
+document.addEventListener('DOMContentLoaded', setupAvailabilityHandler);

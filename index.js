@@ -146,6 +146,13 @@ fastify.register(fastifyStatic, {
   prefix: "/",
 });
 
+// Add components handling
+fastify.register(fastifyStatic, {
+  root: path.join(__dirname, "public/components"),
+  prefix: "/components/",
+  decorateReply: false
+});
+
 // Then register other plugins and routes
 fastify.register(fastifyFormBody);
 fastify.register(fastifyWs);
@@ -166,21 +173,6 @@ const PORT = process.env.PORT || 8000;
 // Change the root route to a different path for API health check
 fastify.get("/api/health", async (_, reply) => {
   reply.send({ message: "Server is running" });
-});
-
-fastify.get("/api/drugs", async (_, reply) => {
-  // render html page
-  const drugs = await getAllDrugs(db);
-
-  return reply.send({ drugs });
-});
-
-fastify.post("/api/availability", async (request, reply) => {
-  const params = request.body;
-  const { drug_id } = params;
-
-  const availability = await getDrugByAvailability(db, drug_id);
-  return reply.send({ availability });
 });
 
 fastify.get("/availability", async (_, reply) => {

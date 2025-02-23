@@ -10,49 +10,46 @@
     <link rel="stylesheet" href="/css/styles.css">
 </head>
 <body>
-    <div class="header">
-        <div class="logo-container">
-            <a href="/">
-                <img src="/images/logo.png" alt="Pill Patrol Logo" class="logo">
-                <h1>Pill Patrol</h1>
-            </a>
-        </div>
+    <!-- Header will be inserted here -->
+    <div id="header-placeholder"></div>
 
-        <nav class="navigation-menu">
-            <ul>
-                <li>
-                    <a href="/">Home</a>
-                    <a href="/availability">Inventory</a>
-                </li>
-            </ul>
-        </nav>
-    </div>
     <div class="container">
         <div class="form-container">
-            <div id="status"></div>
-        </div>
+            <div id="status" class="status"></div>
+            
+            <form id="availabilityMenu" class="search-form">
+                <div class="form-group">
+                    <label for="drug-picker">Medication:</label>
+                    <div class="autocomplete-container">
+                        <select id="drug-picker" name="drug" required>
+                            <option value="" disabled selected>Enter medication name</option>
+                        </select>
+                    </div>
+                </div>
 
-        <div class="menu">
-            <form id="availabilityMenu">
-                <select id="drug-picker" name="drug" required>
-                    <option value="" disabled selected>Select a Drug</option>
-                </select>
-
-                <input type="submit" value="Check Availability">
-             </form>
+                <div class="form-group">
+                    <label for="dose-picker">Strength:</label>
+                    <div class="autocomplete-container">
+                        <select id="dose-picker" name="dose" disabled>
+                            <option value="" disabled selected>Select strength</option>
+                        </select>
+                    </div>
+                </div>
+            </form>
         </div>
 
         <div class="results-container">
             <div class="pharmacy-list" id="availabilityList">
-                <h2>Availability for <span id="desiredMedication"></span></h2>
+                <h2>Availability for <span id="desiredMedication">No medication selected</span></h2>
                 <table class="pharmacy-table">
                     <thead>
                         <tr>
                             <th>Pharmacy</th>
                             <th>Address</th>
                             <th>Phone number</th>
-                            <th>Available from</th>
-                            <th>Action</th>
+                            <th>Dose</th>
+                            <th>Status</th>
+                            <th>Last Updated Date</th>
                         </tr>
                     </thead>
                     <tbody id="pharmacyTableBody">
@@ -61,5 +58,14 @@
             </div>
         </div>
     </div>
+
+    <script>
+        // Load the header
+        fetch('/components/header.html')
+            .then(response => response.text())
+            .then(html => {
+                document.getElementById('header-placeholder').innerHTML = html;
+            });
+    </script>
 </body>
 </html>

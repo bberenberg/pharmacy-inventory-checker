@@ -389,4 +389,69 @@ export default async function pharmacyRoutes(fastify) {
       });
     }
   });
+
+  // Update the availability endpoint to include drug dose information
+  fastify.post("/api/availability", async (request, reply) => {
+    const { drugId } = request.body;
+
+    if (!drugId) {
+      return reply.code(400).send({
+        success: false,
+        error: "Drug ID is required"
+      });
+    }
+
+    try {
+      const pharmacies = await fastify.db.all(`
+        SELECT 
+          p.name,
+          p.address,
+          p.phone,
+          pda.available_from,
+          pda.quantity,
+          pda.alternative_feedback,
+          d.dose  -- Add the dose from the drug table
+        FROM pharmacy p
+        JOIN pharmacy_drug_availability pda ON p.id = pda.pharmacy_id
+        JOIN drug d ON d.id = pda.drug_id  -- Join with drug table
+        WHERE pda.drug_id = ?
+        ORDER BY pda.available_from ASC
+      `, [drugId]);
+
+      return reply.send({
+        success: true,
+        pharmacies: pharmacies
+      });
+    } catch (error) {
+      console.error("Error fetching availability:", error);
+      return reply.code(500).send({
+        success: false,
+        error: "Failed to fetch availability",
+        details: error.message
+      });
+    }
+  });
+
+  // Keep the drugs endpoint
+  fastify.get("/api/drugs", async (request, reply) => {
+    try {
+      const drugs = await fastify.db.all(`
+        SELECT id, name, dose
+        FROM drug
+        ORDER BY name, dose
+      `);
+
+      return reply.send({
+        success: true,
+        drugs: drugs
+      });
+    } catch (error) {
+      console.error("Error fetching drugs:", error);
+      return reply.code(500).send({
+        success: false,
+        error: "Failed to fetch drugs",
+        details: error.message
+      });
+    }
+  });
 }

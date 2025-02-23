@@ -6,7 +6,7 @@ Buddy hops and calls around and gets the same answer: we’re out, call in a cou
 
 # Part 2: Enter PillPatrol
 
-Our AI-agent makes calls to pharmacies about the drugs we know patients need. We then update our database with the latest information on inventory.
+Our AI-agent makes calls to pharmacies about the drugs we know patients need. We then update our database with the latest information on inventory. This changes the experiente for everyone for the better. Doctor's can now send prescriptions to places where they know their patients can get them filled!
 
 - I’d be nice to see some kind of animation of the agent hitting up different points n a map (pharmacies) and learning about supply.
 

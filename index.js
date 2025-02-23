@@ -10,6 +10,9 @@ import path from "path";
 import { fileURLToPath } from "url";
 import sqlite3 from 'sqlite3';
 import { open } from 'sqlite';
+import pkg from 'posthog-node';
+import fs from 'fs/promises';
+const { PostHog } = pkg;
 
 let db;
 
@@ -26,12 +29,16 @@ const {
   PUBLIC_URL,
 } = process.env;
 
+const POSTHOG_API_KEY = process.env.POSTHOG_API_KEY;
+const POSTHOG_HOST = process.env.POSTHOG_HOST || 'https://app.posthog.com';
+
 if (
   !ELEVENLABS_API_KEY ||
   !ELEVENLABS_AGENT_ID ||
   !TWILIO_ACCOUNT_SID ||
   !TWILIO_AUTH_TOKEN ||
-  !TWILIO_PHONE_NUMBER
+  !TWILIO_PHONE_NUMBER ||
+  !POSTHOG_API_KEY
 ) {
   console.error("Missing required environment variables");
   throw new Error("Missing required environment variables");
@@ -103,6 +110,21 @@ function insertCallLog(db, {
   `, [callSid, pharmacyId, drugId, callStatus, stockStatus, restockDate, alternativeFeedback, transcriptSummary]);
 }
 
+// Add this route before the static file handling
+fastify.get('/', async (request, reply) => {
+    try {
+        let html = await fs.readFile('./public/index.html', 'utf-8');
+        
+        // Replace placeholders with actual values
+        html = html.replace('{{POSTHOG_API_KEY}}', POSTHOG_API_KEY)
+                  .replace('{{POSTHOG_HOST}}', POSTHOG_HOST);
+        
+        reply.type('text/html').send(html);
+    } catch (error) {
+        reply.code(500).send('Error loading page');
+    }
+});
+
 // Register static file handling first
 fastify.register(fastifyStatic, {
   root: path.join(__dirname, "public"),
@@ -114,6 +136,15 @@ fastify.register(fastifyFormBody);
 fastify.register(fastifyWs);
 fastify.decorate('db', db);
 fastify.register(pharmacyRoutes);
+
+// Initialize PostHog
+const posthog = new PostHog(
+  POSTHOG_API_KEY,
+  { host: POSTHOG_HOST }
+);
+
+// Add PostHog to fastify instance
+fastify.decorate('posthog', posthog);
 
 const PORT = process.env.PORT || 8000;
 
@@ -657,10 +688,13 @@ fastify.get("/call-status/:callSid", async (request, reply) => {
 });
 
 // Start the Fastify server
-fastify.listen({ port: PORT }, err => {
+fastify.listen({ 
+  port: PORT,
+  host: '0.0.0.0'
+}, err => {
   if (err) {
     console.error("Error starting server:", err);
     process.exit(1);
   }
-  console.log(`[Server] Listening on port ${PORT}`);
+  console.log(`[Server] Listening on 0.0.0.0:${PORT}`);
 });

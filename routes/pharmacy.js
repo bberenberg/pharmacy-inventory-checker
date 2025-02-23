@@ -258,6 +258,18 @@ export default async function pharmacyRoutes(fastify) {
   fastify.post("/call-pharmacy", async (request, reply) => {
     const { pharmacyName, pharmacyAddress, drugName, strength, phoneNumber } = request.body;
 
+    // Track pharmacy call attempt
+    fastify.posthog.capture({
+      distinctId: request.headers['x-forwarded-for'] || request.ip,
+      event: 'pharmacy_call_initiated',
+      properties: {
+        pharmacy_name: pharmacyName,
+        drug_name: drugName,
+        strength: strength,
+        $current_url: request.headers.referer
+      }
+    });
+
     if (!phoneNumber) {
       return reply.code(400).send({
         success: false,
@@ -331,8 +343,29 @@ export default async function pharmacyRoutes(fastify) {
 
       const data = await response.json();
       console.log("call data", data);
+
+      // After successful call initiation
+      fastify.posthog.capture({
+        distinctId: request.headers['x-forwarded-for'] || request.ip,
+        event: 'pharmacy_call_connected',
+        properties: {
+          pharmacy_name: pharmacyName,
+          drug_name: drugName,
+          call_sid: data.callSid
+        }
+      });
+
       return reply.send(data);
     } catch (error) {
+      // Track errors
+      fastify.posthog.capture({
+        distinctId: request.headers['x-forwarded-for'] || request.ip,
+        event: 'pharmacy_call_failed',
+        properties: {
+          pharmacy_name: pharmacyName,
+          error: error.message
+        }
+      });
       console.error("Error initiating pharmacy call:", error);
       return reply.code(500).send({
         success: false,

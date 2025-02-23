@@ -260,4 +260,12 @@ function updateCallStatus(data, elements) {
     if (notes.length > 0) {
         notesField.textContent = notes.join(' | ');
     }
+
+    // Track call status updates
+    posthog.capture('call_status_updated', {
+        call_status: data.status,
+        stock_status: data.stockStatus,
+        has_restock_date: !!data.restockDate,
+        has_alternative: !!data.alternativeFeedback
+    });
 } 

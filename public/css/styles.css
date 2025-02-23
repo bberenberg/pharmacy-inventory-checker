@@ -285,3 +285,18 @@ button:hover {
     text-overflow: ellipsis;
     white-space: nowrap;
 }
+
+.status-success {
+    background-color: #4CAF50;
+    color: white;
+}
+
+.status-failed {
+    background-color: #F44336;
+    color: white;
+}
+
+.status-unknown {
+    background-color: #9E9E9E;
+    color: white;
+}

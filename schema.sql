@@ -29,3 +29,18 @@ create table if not exists pharmacy_drug_availability (
     FOREIGN KEY (pharmacy_id) REFERENCES pharmacy(id)
     -- skipping unique constraint from now
 );
+
+create table if not exists call_log (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    call_sid TEXT NOT NULL UNIQUE,
+    pharmacy_id INTEGER NOT NULL,
+    drug_id INTEGER NOT NULL,
+    call_status TEXT NOT NULL,
+    stock_status BOOLEAN,
+    restock_date DATE,
+    alternative_feedback TEXT,
+    transcript_summary TEXT,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    FOREIGN KEY (pharmacy_id) REFERENCES pharmacy(id),
+    FOREIGN KEY (drug_id) REFERENCES drug(id)
+);

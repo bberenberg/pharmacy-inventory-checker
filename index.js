@@ -74,6 +74,30 @@ function insertOrUpdateAvailability(db, drugId, pharmacyId, quantity) {
   `, [drugId, pharmacyId, quantity]);
 }
 
+function insertCallLog(db, {
+  callSid,
+  pharmacyId,
+  drugId,
+  callStatus,
+  stockStatus,
+  restockDate = null,
+  alternativeFeedback = null,
+  transcriptSummary
+}) {
+  return db.run(`
+    INSERT INTO call_log (
+      call_sid,
+      pharmacy_id,
+      drug_id,
+      call_status,
+      stock_status,
+      restock_date,
+      alternative_feedback,
+      transcript_summary
+    ) VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+  `, [callSid, pharmacyId, drugId, callStatus, stockStatus, restockDate, alternativeFeedback, transcriptSummary]);
+}
+
 // Register static file handling first
 fastify.register(fastifyStatic, {
   root: path.join(__dirname, "public"),
@@ -495,14 +519,12 @@ fastify.register(async fastifyInstance => {
                       console.log("=====================\n");
 
                       // ADD DATA TO DATABASE
-                      // function insertOrUpdateAvailability(db, drugId, pharmacyId, quantity, ava_date) {
-                      // set quantity to 1 if results.StockStatus.value is true or 0 if false
-                      // we need to parse the results.RestockTimeline via some LLM to convert to an ISO date
                       const quantity = results.StockStatus.value === true ? 1 : 0;
                       const storedCallInfo = pendingCallPrompts.get(callSid);
                       console.log("Retrieved callInfo for sid", callSid, ":", storedCallInfo); // Debug log 3
 
                       if (storedCallInfo?.pharmacyInfo?.id && storedCallInfo?.drugInfo?.id) {
+                        // First update availability
                         insertOrUpdateAvailability(
                           db, 
                           storedCallInfo.drugInfo.id, 
@@ -513,13 +535,26 @@ fastify.register(async fastifyInstance => {
                             pharmacy: storedCallInfo.pharmacyInfo.name,
                             drug: storedCallInfo.drugInfo.name
                           });
+
+                          // Then store call results
+                          insertCallLog(db, {
+                            callSid,
+                            pharmacyId: storedCallInfo.pharmacyInfo.id,
+                            drugId: storedCallInfo.drugInfo.id,
+                            callStatus: data.analysis.call_successful ? 'completed' : 'failed',
+                            stockStatus: results.StockStatus?.value || false,
+                            restockDate: results.RestockTimeline?.value || null,
+                            alternativeFeedback: results.AlternativeFeedback?.value || null,
+                            transcriptSummary: data.analysis.transcript_summary
+                          }).then(() => {
+                            console.log('Call log stored');
+                            // Clean up stored call info
+                            pendingCallPrompts.delete(callSid);
+                          });
                         });
                       } else {
                         console.error("Missing pharmacy or drug info for availability update");
                       }
-
-                      // Clean up stored call info
-                      pendingCallPrompts.delete(callSid);
 
                     } else {
                       console.log("[ElevenLabs] No data collection results found after all attempts");
@@ -554,6 +589,55 @@ fastify.register(async fastifyInstance => {
       });
     }
   );
+});
+
+// Update the call-status endpoint
+fastify.get("/call-status/:callSid", async (request, reply) => {
+  const { callSid } = request.params;
+  
+  try {
+    const callLog = await db.get(`
+      SELECT 
+        cl.call_status,
+        cl.stock_status,
+        cl.restock_date,
+        cl.alternative_feedback,
+        pda.quantity
+      FROM call_log cl
+      LEFT JOIN pharmacy_drug_availability pda 
+        ON pda.pharmacy_id = cl.pharmacy_id 
+        AND pda.drug_id = cl.drug_id
+      WHERE cl.call_sid = ?
+    `, [callSid]);
+
+    if (!callLog) {
+      return reply.send({
+        success: true,
+        data: {
+          status: 'pending'
+        }
+      });
+    }
+
+    // Determine stock status based on both call_log and pharmacy_drug_availability
+    const stockStatus = callLog.quantity > 0 || callLog.stock_status === 1;
+
+    return reply.send({
+      success: true,
+      data: {
+        status: callLog.call_status,
+        stockStatus: stockStatus,
+        restockDate: callLog.restock_date,
+        alternativeFeedback: callLog.alternative_feedback
+      }
+    });
+  } catch (error) {
+    console.error('Error fetching call status:', error);
+    return reply.code(500).send({
+      success: false,
+      error: 'Failed to fetch call status'
+    });
+  }
 });
 
 // Start the Fastify server

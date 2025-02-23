@@ -25,11 +25,11 @@ npm install
 3e Setup the SQlite database:
 
 ```bash
-sqlite3 aipharmacy < schema.sql
+sqlite3 aipharmacy.sqlite < schema.sql
 
-sqlite3 aipharmacy < seed.sql
+sqlite3 aipharmacy.sqlite < seed.sql
 
-sqlite3 aipharmacy
+sqlite3 aipharmacy.sqlite
 ```
 
 4. Start the server:

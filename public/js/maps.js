@@ -1,6 +1,7 @@
 let map;
 let markers = [];
 let autocomplete;
+let activePolls = new Map();
 
 export function initMap() {
     map = new google.maps.Map(document.getElementById('map'), {
@@ -131,8 +132,16 @@ export function displayPharmacies(pharmacies) {
                     throw new Error(data.error);
                 }
 
-                // We'll need to update these statuses based on the conversation results
-                // This will be handled by a new WebSocket connection or polling mechanism
+                // Start polling for this call's status
+                const callSid = data.callSid;
+                if (callSid) {
+                    startPolling(callSid, {
+                        callStatusElement,
+                        inventoryStatusElement,
+                        notesField: row.querySelector('.notes-field')
+                    });
+                }
+
             } catch (error) {
                 console.error('Error:', error);
                 callStatusElement.className = `status-lozenge ${statuses[3].class}`;
@@ -155,4 +164,97 @@ export function displayPharmacies(pharmacies) {
 
         tableBody.appendChild(row);
     });
+}
+
+function startPolling(callSid, elements) {
+    if (activePolls.has(callSid)) {
+        return;
+    }
+
+    const pollInterval = setInterval(async () => {
+        try {
+            const response = await fetch(`/call-status/${callSid}`);
+            const data = await response.json();
+
+            if (!data.success) {
+                throw new Error(data.error);
+            }
+
+            console.log('Poll response:', data);
+            updateCallStatus(data.data, elements);
+
+            // Stop polling if call is complete or failed
+            if (data.data.status === 'completed' || data.data.status === 'failed') {
+                console.log('Stopping poll - final status:', data.data);
+                stopPolling(callSid);
+            }
+        } catch (error) {
+            console.error('Polling error:', error);
+            stopPolling(callSid);
+        }
+    }, 2000);
+
+    activePolls.set(callSid, pollInterval);
+}
+
+function stopPolling(callSid) {
+    const interval = activePolls.get(callSid);
+    if (interval) {
+        clearInterval(interval);
+        activePolls.delete(callSid);
+    }
+}
+
+function updateCallStatus(data, elements) {
+    const { callStatusElement, inventoryStatusElement, notesField } = elements;
+
+    // Get statuses array from displayPharmacies scope
+    const statuses = [
+        { text: 'To Check', class: 'status-to-check' },
+        { text: 'Calling...', class: 'status-checking' },
+        { text: 'Call Successful', class: 'status-success' },
+        { text: 'Call Failed', class: 'status-failed' },
+        { text: 'In Stock', class: 'status-in-stock' },
+        { text: 'Out of Stock', class: 'status-out-of-stock' },
+        { text: 'Unknown', class: 'status-unknown' }
+    ];
+
+    // Debug log
+    console.log('Updating status with data:', data);
+
+    // Update call status
+    if (data.status === 'completed') {
+        callStatusElement.className = `status-lozenge ${statuses[2].class}`;
+        callStatusElement.textContent = statuses[2].text;
+    } else if (data.status === 'failed') {
+        callStatusElement.className = `status-lozenge ${statuses[3].class}`;
+        callStatusElement.textContent = statuses[3].text;
+    }
+
+    // Update inventory status based on stockStatus boolean
+    if (typeof data.stockStatus === 'boolean') {
+        if (data.stockStatus === true) {
+            inventoryStatusElement.className = `status-lozenge ${statuses[4].class}`;
+            inventoryStatusElement.textContent = statuses[4].text;
+        } else {
+            inventoryStatusElement.className = `status-lozenge ${statuses[5].class}`;
+            inventoryStatusElement.textContent = statuses[5].text;
+        }
+    } else {
+        // Only set to unknown if we don't have a boolean status
+        inventoryStatusElement.className = `status-lozenge ${statuses[6].class}`;
+        inventoryStatusElement.textContent = statuses[6].text;
+    }
+
+    // Update notes field
+    let notes = [];
+    if (data.restockDate) {
+        notes.push(`Restock: ${data.restockDate}`);
+    }
+    if (data.alternativeFeedback) {
+        notes.push(data.alternativeFeedback);
+    }
+    if (notes.length > 0) {
+        notesField.textContent = notes.join(' | ');
+    }
 } 

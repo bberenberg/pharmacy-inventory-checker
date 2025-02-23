@@ -51,9 +51,6 @@ function setupFormHandler() {
                 '📍'
             );
 
-            statusDiv.className = 'success';
-            statusDiv.textContent = 'Finding nearby pharmacies...';
-
             const pharmacyResponse = await fetch('/nearby-pharmacies', {
                 method: 'POST',
                 headers: {
@@ -70,8 +67,6 @@ function setupFormHandler() {
 
             displayPharmacies(pharmacyData.data);
             
-            statusDiv.textContent = `Found ${pharmacyData.data.length} nearby pharmacies`;
-
             // Track successful pharmacy search
             posthog.capture('pharmacies_found', {
                 count: pharmacyData.data.length,
@@ -79,15 +74,7 @@ function setupFormHandler() {
             });
 
         } catch (error) {
-            statusDiv.className = 'error';
-            statusDiv.textContent = 'Error: ' + error.message;
-            mapDiv.style.display = 'none';
-            pharmacyListDiv.style.display = 'none';
-
-            // Track errors
-            posthog.capture('pharmacy_search_error', {
-                error: error.message
-            });
+            console.error('Error:', error);
         }
     });
 }

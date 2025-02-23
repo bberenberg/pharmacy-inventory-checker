@@ -1,33 +1,36 @@
 import { Client } from "@googlemaps/google-maps-services-js";
 import { twilioPrompts } from '../config/twilio-prompts.js';
 
-const mapsClient = new Client({});
-
-// Helper function to calculate distance between two points using Haversine formula
-function calculateDistance(lat1, lon1, lat2, lon2) {
-  const R = 6371; // Radius of the earth in km
-  const dLat = deg2rad(lat2 - lat1);
-  const dLon = deg2rad(lon2 - lon1);
-  const a =
-    Math.sin(dLat / 2) * Math.sin(dLat / 2) +
-    Math.cos(deg2rad(lat1)) *
-    Math.cos(deg2rad(lat2)) *
-    Math.sin(dLon / 2) *
-    Math.sin(dLon / 2);
-  const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
-  return R * c; // Distance in km
-}
-
-function deg2rad(deg) {
-  return deg * (Math.PI / 180);
-}
-
 export default async function pharmacyRoutes(fastify) {
-  const { GOOGLE_MAPS_API_KEY } = process.env;
+  const { GOOGLE_MAPS_API_KEY_BACKEND } = process.env;
 
-  if (!GOOGLE_MAPS_API_KEY) {
-    console.error("Missing GOOGLE_MAPS_API_KEY in environment variables");
+  if (!GOOGLE_MAPS_API_KEY_BACKEND) {
+    console.error("Missing GOOGLE_MAPS_API_KEY_BACKEND in environment variables");
     process.exit(1);
+  }
+
+  const mapsClient = new Client({
+    // Use backend key for server-side API calls
+    key: GOOGLE_MAPS_API_KEY_BACKEND
+  });
+
+  // Helper function to calculate distance between two points using Haversine formula
+  function calculateDistance(lat1, lon1, lat2, lon2) {
+    const R = 6371; // Radius of the earth in km
+    const dLat = deg2rad(lat2 - lat1);
+    const dLon = deg2rad(lon2 - lon1);
+    const a =
+      Math.sin(dLat / 2) * Math.sin(dLat / 2) +
+      Math.cos(deg2rad(lat1)) *
+      Math.cos(deg2rad(lat2)) *
+      Math.sin(dLon / 2) *
+      Math.sin(dLon / 2);
+    const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
+    return R * c; // Distance in km
+  }
+
+  function deg2rad(deg) {
+    return deg * (Math.PI / 180);
   }
 
   // New endpoint to validate and geocode an address
@@ -42,7 +45,7 @@ export default async function pharmacyRoutes(fastify) {
       const geocodeResponse = await mapsClient.geocode({
         params: {
           address,
-          key: GOOGLE_MAPS_API_KEY
+          key: GOOGLE_MAPS_API_KEY_BACKEND
         }
       });
 
@@ -103,7 +106,7 @@ export default async function pharmacyRoutes(fastify) {
       const geocodeResponse = await mapsClient.geocode({
         params: {
           address,
-          key: GOOGLE_MAPS_API_KEY
+          key: GOOGLE_MAPS_API_KEY_BACKEND
         }
       });
 
@@ -119,7 +122,7 @@ export default async function pharmacyRoutes(fastify) {
           location: { lat, lng },
           radius: 5000,
           type: "pharmacy",
-          key: GOOGLE_MAPS_API_KEY
+          key: GOOGLE_MAPS_API_KEY_BACKEND
         }
       });
 
@@ -136,7 +139,7 @@ export default async function pharmacyRoutes(fastify) {
               params: {
                 place_id: place.place_id,
                 fields: ["name", "formatted_address", "formatted_phone_number", "opening_hours", "geometry"],
-                key: GOOGLE_MAPS_API_KEY
+                key: GOOGLE_MAPS_API_KEY_BACKEND
               }
             });
 
@@ -211,7 +214,7 @@ export default async function pharmacyRoutes(fastify) {
           location: location,
           radius: 5000, // 5km radius
           type: 'pharmacy',
-          key: GOOGLE_MAPS_API_KEY
+          key: GOOGLE_MAPS_API_KEY_BACKEND
         }
       });
 
@@ -222,7 +225,7 @@ export default async function pharmacyRoutes(fastify) {
             params: {
               place_id: place.place_id,
               fields: ['formatted_phone_number'],
-              key: GOOGLE_MAPS_API_KEY
+              key: GOOGLE_MAPS_API_KEY_BACKEND
             }
           });
 

@@ -125,17 +125,20 @@ function insertCallLog(db, {
   `, [callSid, pharmacyId, drugId, callStatus, stockStatus, restockDate, alternativeFeedback, transcriptSummary]);
 }
 
-// Add this route before the static file handling
+// Update the root route to serve index.html with dynamic values
 fastify.get('/', async (request, reply) => {
   try {
     let html = await fs.readFile('./public/index.html', 'utf-8');
 
     // Replace placeholders with actual values
-    html = html.replace('{{POSTHOG_API_KEY}}', POSTHOG_API_KEY)
-      .replace('{{POSTHOG_HOST}}', POSTHOG_HOST);
+    html = html
+      .replace('{{POSTHOG_API_KEY}}', POSTHOG_API_KEY)
+      .replace('{{POSTHOG_HOST}}', POSTHOG_HOST)
+      .replace('{{GOOGLE_MAPS_API_KEY}}', process.env.GOOGLE_MAPS_API_KEY_FRONTEND);
 
     reply.type('text/html').send(html);
   } catch (error) {
+    console.error('Error serving index.html:', error);
     reply.code(500).send('Error loading page');
   }
 });
@@ -175,9 +178,17 @@ fastify.get("/api/health", async (_, reply) => {
   reply.send({ message: "Server is running" });
 });
 
-fastify.get("/availability", async (_, reply) => {
-  // render html page
-  return reply.sendFile('availability.html');
+// Update the availability route
+fastify.get('/availability', async (request, reply) => {
+  try {
+    let html = await fs.readFile('./public/availability.html', 'utf-8');
+    
+    html = html.replace('{{GOOGLE_MAPS_API_KEY}}', process.env.GOOGLE_MAPS_API_KEY_FRONTEND);
+    
+    reply.type('text/html').send(html);
+  } catch (error) {
+    reply.code(500).send('Error loading page');
+  }
 });
 
 // Initialize Twilio client

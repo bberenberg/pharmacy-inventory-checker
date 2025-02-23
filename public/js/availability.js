@@ -89,9 +89,6 @@ async function setupAvailabilityHandler() {
     // Function to fetch and display availability
     async function fetchAvailability(drugName, selectedDose = null) {
         try {
-            statusDiv.className = 'info';
-            statusDiv.textContent = 'Checking availability...';
-
             // Get all drug IDs for the selected medication
             const drugIds = drugsData
                 .filter(drug => drug.name === drugName && (!selectedDose || drug.dose === selectedDose))
@@ -118,13 +115,9 @@ async function setupAvailabilityHandler() {
                 selectedDose ? `${drugName} ${selectedDose}` : drugName;
 
             displayAvailabilityResults(currentPharmacies, drugsData);
-            
-            statusDiv.className = 'success';
-            statusDiv.textContent = `Found ${currentPharmacies.length} pharmacies with availability information`;
 
         } catch (error) {
-            statusDiv.className = 'error';
-            statusDiv.textContent = 'Error: ' + error.message;
+            console.error('Error:', error);
         }
     }
 

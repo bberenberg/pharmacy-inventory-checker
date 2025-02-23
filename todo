@@ -3,6 +3,7 @@ Dynamic Landing Pages based on historical call logs
 Prompt for things like "mg" to be read as "milligrams"
 Use Mistral for rewording drug names / dosages /etc?
 Get different voices working
+Show progress by using grey markers, then changing color to green and red based on the call outcome
 
 "Uncertainty Amidst Danger Feels Awful"
 

@@ -7,12 +7,15 @@ create table if not exists pharmacy (
     id INTEGER PRIMARY KEY AUTOINCREMENT,
     name TEXT NOT NULL,
     address TEXT NOT NULL,
-    phone TEXT NOT NULL
+    phone TEXT NOT NULL,
+    UNIQUE(name, address)
 );
 
 create table if not exists drug (
     id INTEGER PRIMARY KEY AUTOINCREMENT,
-    name TEXT NOT NULL
+    name TEXT NOT NULL,
+    dose TEXT NOT NULL,
+    UNIQUE(name, dose)
 );
 
 create table if not exists pharmacy_drug_availability (

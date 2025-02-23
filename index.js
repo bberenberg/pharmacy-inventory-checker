@@ -45,14 +45,14 @@ const __dirname = path.dirname(__filename);
 
 try {
   db = await open({
-    filename: './aipharmacy',
+    filename: './aipharmacy.sqlite',
     driver: sqlite3.Database
   });
 
-  let pha = await getPharmacy(db, 'CVS');
-  if (!pha) {
-    throw new Error('Pharmacy not found');
-  }
+  //let pha = await getPharmacy(db, 'CVS');
+  //if (!pha) {
+  //  throw new Error('Pharmacy not found');
+  //}
 } catch (error) {
   console.error('Error opening database:', error);
 }
@@ -65,13 +65,13 @@ function getDrug(db, name) {
   return db.get('SELECT * FROM drug WHERE name LIKE ?', [`%${name}%`]);
 }
 
-function insertOrUpdateAvailability(db, drugId, pharmacyId, quantity, ava_date) {
+function insertOrUpdateAvailability(db, drugId, pharmacyId, quantity) {
   return db.run(`
     INSERT INTO pharmacy_drug_availability
       (drug_id, pharmacy_id, quantity, available_from)
     VALUES
-      (?, ?, ?, ?)
-  `, [drugId, pharmacyId, quantity, ava_date]);
+      (?, ?, ?, CURRENT_TIMESTAMP)
+  `, [drugId, pharmacyId, quantity]);
 }
 
 // Register static file handling first
@@ -83,6 +83,7 @@ fastify.register(fastifyStatic, {
 // Then register other plugins and routes
 fastify.register(fastifyFormBody);
 fastify.register(fastifyWs);
+fastify.decorate('db', db);
 fastify.register(pharmacyRoutes);
 
 const PORT = process.env.PORT || 8000;
@@ -128,11 +129,10 @@ async function getSignedUrl() {
 // Store for pending call prompts
 const pendingCallPrompts = new Map();
 
-
-
 // Modified outbound-call route
 fastify.post("/outbound-call", async (request, reply) => {
-  const { number, prompt, first_message } = request.body;
+  const { number, prompt, first_message, pharmacyInfo, drugInfo } = request.body;
+  console.log("Outbound call request body:", request.body); // Debug log 1
 
   if (!number) {
     return reply.code(400).send({ error: "Phone number is required" });
@@ -150,10 +150,14 @@ fastify.post("/outbound-call", async (request, reply) => {
     });
 
     // Store prompts mapped to callSid
-    pendingCallPrompts.set(call.sid, {
+    const callInfo = {
       prompt,
-      first_message
-    });
+      first_message,
+      pharmacyInfo,
+      drugInfo
+    };
+    console.log("Storing callInfo for sid", call.sid, ":", callInfo); // Debug log 2
+    pendingCallPrompts.set(call.sid, callInfo);
 
     // Cleanup after 5 minutes in case call never connects
     setTimeout(() => {
@@ -413,19 +417,6 @@ fastify.register(async fastifyInstance => {
                 status: 'completed'
               }).then(call => {
                 console.log("Call ended successfully", call);
-
-                getPharmacy(db, 'CVS').then(pharmacy => {
-                  console.log('Found Pharmacy:', pharmacy);
-                  getDrug(db, 'Amoxicillin').then(drug => {
-                    console.log("Found Drug:", drug);
-
-                    const availableFrom = new Date().toISOString();
-
-                    insertOrUpdateAvailability(db, drug.id, pharmacy.id, 10, availableFrom).then(() => {
-                      console.log('Availability updated');
-                    });
-                  });
-                });
               });
           });
         } catch (error) {
@@ -502,6 +493,34 @@ fastify.register(async fastifyInstance => {
                         console.log(`${turn.role}: ${turn.message}`);
                       });
                       console.log("=====================\n");
+
+                      // ADD DATA TO DATABASE
+                      // function insertOrUpdateAvailability(db, drugId, pharmacyId, quantity, ava_date) {
+                      // set quantity to 1 if results.StockStatus.value is true or 0 if false
+                      // we need to parse the results.RestockTimeline via some LLM to convert to an ISO date
+                      const quantity = results.StockStatus.value === true ? 1 : 0;
+                      const storedCallInfo = pendingCallPrompts.get(callSid);
+                      console.log("Retrieved callInfo for sid", callSid, ":", storedCallInfo); // Debug log 3
+
+                      if (storedCallInfo?.pharmacyInfo?.id && storedCallInfo?.drugInfo?.id) {
+                        insertOrUpdateAvailability(
+                          db, 
+                          storedCallInfo.drugInfo.id, 
+                          storedCallInfo.pharmacyInfo.id, 
+                          quantity 
+                        ).then(() => {
+                          console.log('Availability updated for', {
+                            pharmacy: storedCallInfo.pharmacyInfo.name,
+                            drug: storedCallInfo.drugInfo.name
+                          });
+                        });
+                      } else {
+                        console.error("Missing pharmacy or drug info for availability update");
+                      }
+
+                      // Clean up stored call info
+                      pendingCallPrompts.delete(callSid);
+
                     } else {
                       console.log("[ElevenLabs] No data collection results found after all attempts");
                     }

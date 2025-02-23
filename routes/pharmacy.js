@@ -270,11 +270,53 @@ export default async function pharmacyRoutes(fastify) {
        ? phoneNumber
        : phoneNumber.replace(/\D/g, '').replace(/^1?(\d{10})$/, '+1$1');
      */
-    const formattedPhone = "+19125158456";
+    const formattedPhone = "+14088361690";
 
     try {
+      // Save pharmacy to database first
+      await fastify.db.run(`
+        INSERT INTO pharmacy (name, address, phone) 
+        VALUES (?, ?, ?)
+        ON CONFLICT(name, address) DO UPDATE SET 
+        phone = ?
+      `, [pharmacyName, pharmacyAddress, formattedPhone, formattedPhone]);
+
+      const result = await fastify.db.get(
+        'SELECT id FROM pharmacy WHERE name = ? AND address = ?',
+        [pharmacyName, pharmacyAddress]
+      );
+
+      // Save drug if it doesn't exist and get its id
+      await fastify.db.run(`
+        INSERT INTO drug (name, dose) 
+        VALUES (?, ?)
+        ON CONFLICT(name, dose) DO UPDATE SET 
+        dose = ?
+      `, [drugName, strength, strength]);
+
+      const drugResult = await fastify.db.get(
+        'SELECT id FROM drug WHERE name = ? AND dose = ?',
+        [drugName, strength]
+      );
+
       const prompt = twilioPrompts.pharmacyCall.getPrompt(pharmacyName, drugName, strength);
       const first_message = twilioPrompts.pharmacyCall.greeting(drugName, strength);
+
+      // Add drug and pharmacy IDs to callInfo
+      const callInfo = {
+        prompt,
+        first_message,
+        pharmacyInfo: {
+          id: result.id,
+          name: pharmacyName,
+          address: pharmacyAddress
+        },
+        drugInfo: {
+          id: drugResult.id,
+          name: drugName,
+          strength: strength
+        }
+      };
 
       const response = await fetch(`https://${request.headers.host}/outbound-call`, {
         method: 'POST',
@@ -283,8 +325,7 @@ export default async function pharmacyRoutes(fastify) {
         },
         body: JSON.stringify({
           number: formattedPhone,
-          prompt,
-          first_message
+          ...callInfo
         })
       });
 

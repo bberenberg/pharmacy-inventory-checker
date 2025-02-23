@@ -230,14 +230,18 @@ fastify.register(async fastifyInstance => {
       const setupElevenLabs = async () => {
         try {
           const signedUrl = await getSignedUrl();
-          elevenLabsWs = new WebSocket(signedUrl);
+          // Add voice_id parameter to the WebSocket URL
+          const wsUrl = new URL(signedUrl);
+          wsUrl.searchParams.append('voice_id', 'tvWD4i07Hg5L4uEvbxYV');
+          
+          elevenLabsWs = new WebSocket(wsUrl.toString());
 
           elevenLabsWs.on("open", () => {
             console.log("[ElevenLabs] Connected to Conversational AI");
 
             // Get stored prompts
             const storedPrompts = pendingCallPrompts.get(callSid);
-
+            
             if (storedPrompts) {
               // Inject prompts into conversation config
               customParameters = {
@@ -245,7 +249,7 @@ fastify.register(async fastifyInstance => {
                 first_message: storedPrompts.first_message
               };
 
-              // Send initial configuration with prompt and first message
+              // Send initial configuration with prompt, first message, and voice ID
               const initialConfig = {
                 type: "conversation_initiation_client_data",
                 conversation_config_override: {
@@ -255,6 +259,9 @@ fastify.register(async fastifyInstance => {
                     },
                     first_message: customParameters.first_message,
                   },
+                  tts: {
+                    voiceId: "tvWD4i07Hg5L4uEvbxYV"
+                  }
                 },
               };
 

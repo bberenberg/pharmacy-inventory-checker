@@ -8,6 +8,8 @@ function setupFormHandler() {
         e.preventDefault();
         const statusDiv = document.getElementById('status');
         const mapDiv = document.getElementById('map');
+        const initialLogo = document.getElementById('initialLogo');
+        const headerLogo = document.querySelector('.header');
         const pharmacyListDiv = document.getElementById('pharmacyList');
         
         statusDiv.className = '';
@@ -17,7 +19,9 @@ function setupFormHandler() {
             const address = document.getElementById('address').value;
             const validatedAddress = await validateAddress(address);
 
+            initialLogo.style.display = 'none';
             mapDiv.style.display = 'block';
+            headerLogo.style.display = 'flex';
             pharmacyListDiv.style.display = 'block';
 
             map.setCenter(validatedAddress.location);

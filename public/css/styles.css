@@ -268,13 +268,51 @@ button:hover {
     font-size: 24px;
 }
 
-.initial-logo {
-    width: 100%;
-    height: 400px;
-    object-fit: contain;
-    padding: 20px;
-    box-sizing: border-box;
-    display: block;
+.intro-box {
+    background-color: white;
+    border-radius: 12px;
+    padding: 30px;
+    box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+    margin: 20px 0;
+}
+
+.intro-box h2 {
+    color: #333;
+    margin: 0 0 24px 0;
+    text-align: center;
+    font-size: 24px;
+}
+
+.intro-steps {
+    display: flex;
+    flex-direction: column;
+    gap: 20px;
+}
+
+.step {
+    display: flex;
+    align-items: center;
+    gap: 16px;
+}
+
+.step-number {
+    background-color: #4CAF50;
+    color: white;
+    width: 32px;
+    height: 32px;
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-weight: bold;
+    flex-shrink: 0;
+}
+
+.step p {
+    margin: 0;
+    font-size: 16px;
+    line-height: 1.5;
+    color: #555;
 }
 
 /* Pharmacy table styles */
@@ -432,25 +470,8 @@ button:hover {
     margin-bottom: 20px;
 }
 
-/* Fix initial logo */
+/* Remove old initial logo styles */
 .initial-logo {
-    width: 100%;
-    height: 400px;
-    object-fit: contain;
-    padding: 20px;
-    box-sizing: border-box;
-    display: block;
-}
-
-#map {
-    height: 400px;
-    width: 100%;
-    margin: 20px 0;
-    display: none;
-}
-
-.pharmacy-list {
-    margin-top: 20px;
     display: none;
 }
 

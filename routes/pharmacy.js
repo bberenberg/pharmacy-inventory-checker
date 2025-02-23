@@ -273,7 +273,7 @@ export default async function pharmacyRoutes(fastify) {
     
     try {
       const prompt = twilioPrompts.pharmacyCall.getPrompt(pharmacyName, drugName, strength);
-      const first_message = twilioPrompts.pharmacyCall.greeting(pharmacyName);
+      const first_message = twilioPrompts.pharmacyCall.greeting(drugName, strength);
 
       const response = await fetch(`https://${request.headers.host}/outbound-call`, {
         method: 'POST',

@@ -51,12 +51,7 @@ export const twilioPrompts = {
   `,
   
       // Initial greeting when connected to a representative
-      greeting: (pharmacyName) => 
-        `Hello, my name is Bob. I'm a Prescription Coordinator calling on behalf of Dr. Smith's office.`,
-  
-      medicationQuery: (drugName, strength) => 
-        `I'm calling to check if you currently have ${drugName} in ${strength} in stock.`,
-  
-      thankYou: "Thank you for your assistance."
+      greeting: (drugName, strength) => 
+        `Hello, my name is Bob. I'm a Prescription Coordinator calling on behalf of Dr. Smith's office. I'm calling to check if you currently have ${drugName} in ${strength} in stock.`
     }
   };

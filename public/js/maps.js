@@ -66,7 +66,7 @@ export function displayPharmacies(pharmacies) {
     // Define statuses for reference
     const statuses = [
         { text: 'To Check', class: 'status-to-check' },
-        { text: 'Calling...', class: 'status-checking' },
+        { text: 'Checking...', class: 'status-checking' },
         { text: 'Call Successful', class: 'status-success' },
         { text: 'Call Failed', class: 'status-failed' },
         { text: 'In Stock', class: 'status-in-stock' },
@@ -105,9 +105,15 @@ export function displayPharmacies(pharmacies) {
                 // Disable button during call
                 callButton.disabled = true;
                 
-                // Update call status to "Calling..."
+                // Always reset both statuses at the start of a new call
                 callStatusElement.className = `status-lozenge ${statuses[1].class}`;
                 callStatusElement.textContent = statuses[1].text;
+                inventoryStatusElement.className = `status-lozenge ${statuses[1].class}`; // Set to "Checking"
+                inventoryStatusElement.textContent = statuses[1].text;
+                
+                // Clear any existing notes
+                const notesField = row.querySelector('.notes-field');
+                notesField.textContent = '-';
 
                 const drugName = document.getElementById('drug').value;
                 const strength = document.getElementById('strength').value;
@@ -211,7 +217,7 @@ function updateCallStatus(data, elements) {
     // Get statuses array from displayPharmacies scope
     const statuses = [
         { text: 'To Check', class: 'status-to-check' },
-        { text: 'Calling...', class: 'status-checking' },
+        { text: 'Checking...', class: 'status-checking' },
         { text: 'Call Successful', class: 'status-success' },
         { text: 'Call Failed', class: 'status-failed' },
         { text: 'In Stock', class: 'status-in-stock' },
@@ -231,8 +237,8 @@ function updateCallStatus(data, elements) {
         callStatusElement.textContent = statuses[3].text;
     }
 
-    // Update inventory status based on stockStatus boolean
-    if (typeof data.stockStatus === 'boolean') {
+    // Only update inventory status if we have a stockStatus in the response
+    if ('stockStatus' in data) {
         if (data.stockStatus === true) {
             inventoryStatusElement.className = `status-lozenge ${statuses[4].class}`;
             inventoryStatusElement.textContent = statuses[4].text;
@@ -240,11 +246,8 @@ function updateCallStatus(data, elements) {
             inventoryStatusElement.className = `status-lozenge ${statuses[5].class}`;
             inventoryStatusElement.textContent = statuses[5].text;
         }
-    } else {
-        // Only set to unknown if we don't have a boolean status
-        inventoryStatusElement.className = `status-lozenge ${statuses[6].class}`;
-        inventoryStatusElement.textContent = statuses[6].text;
     }
+    // Don't update to unknown - keep the "Checking..." status until we get a result
 
     // Update notes field
     let notes = [];

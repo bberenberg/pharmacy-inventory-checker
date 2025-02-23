@@ -631,18 +631,22 @@ fastify.get("/call-status/:callSid", async (request, reply) => {
       });
     }
 
-    // Determine stock status based on both call_log and pharmacy_drug_availability
-    const stockStatus = callLog.quantity > 0 || callLog.stock_status === 1;
-
-    return reply.send({
+    // Only include stockStatus if call is completed
+    const response = {
       success: true,
       data: {
         status: callLog.call_status,
-        stockStatus: stockStatus,
         restockDate: callLog.restock_date,
         alternativeFeedback: callLog.alternative_feedback
       }
-    });
+    };
+
+    // Only add stockStatus if call is completed
+    if (callLog.call_status === 'completed') {
+      response.data.stockStatus = callLog.quantity > 0 || callLog.stock_status === 1;
+    }
+
+    return reply.send(response);
   } catch (error) {
     console.error('Error fetching call status:', error);
     return reply.code(500).send({

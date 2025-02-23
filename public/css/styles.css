@@ -249,12 +249,12 @@ button:hover {
 }
 
 .pharmacy-table th:nth-child(1) {
-    width: 25%;
+    width: 20%;
 }
 
 /* Name */
 .pharmacy-table th:nth-child(2) {
-    width: 35%;
+    width: 25%;
 }
 
 /* Address */
@@ -269,7 +269,7 @@ button:hover {
 
 /* Inventory Status */
 .pharmacy-table th:nth-child(5) {
-    width: 10%;
+    width: 25%;
 }
 
 /* Notes */
@@ -281,9 +281,7 @@ button:hover {
 
 .pharmacy-table td {
     padding: 8px;
-    overflow: hidden;
-    text-overflow: ellipsis;
-    white-space: nowrap;
+    vertical-align: top;
 }
 
 .status-success {
@@ -299,4 +297,23 @@ button:hover {
 .status-unknown {
     background-color: #9E9E9E;
     color: white;
+}
+
+/* Allow address to wrap */
+.pharmacy-table td:nth-child(2) {
+    white-space: normal;
+    word-wrap: break-word;
+}
+
+/* Allow notes to wrap */
+.pharmacy-table td:nth-child(5) {
+    white-space: normal;
+    word-wrap: break-word;
+}
+
+/* Keep other cells from wrapping */
+.pharmacy-table td:not(:nth-child(2)):not(:nth-child(5)) {
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
 }

@@ -8,209 +8,19 @@
     <script type="module" src="/js/app.js"></script>
     <link rel="stylesheet" href="/css/styles.css">
     <style>
-        body {
-            font-family: Arial, sans-serif;
-            max-width: 1200px;
-            margin: 20px auto;
-            padding: 0 20px;
-        }
-        .form-group {
-            margin-bottom: 15px;
-        }
-        label {
-            display: block;
-            margin-bottom: 5px;
-        }
-        input, textarea {
-            width: 100%;
-            padding: 8px;
-            margin-bottom: 10px;
-            box-sizing: border-box;
-        }
-        button {
-            background-color: #4CAF50;
-            color: white;
-            padding: 10px 15px;
-            border: none;
-            border-radius: 4px;
-            cursor: pointer;
-        }
-        button:hover {
-            background-color: #45a049;
-        }
-        #status {
-            margin-top: 20px;
-            padding: 10px;
-            border-radius: 4px;
-        }
-        .success {
-            background-color: #dff0d8;
-            color: #3c763d;
-        }
-        .error {
-            background-color: #f2dede;
-            color: #a94442;
-        }
-        #map {
-            height: 400px;
-            width: 100%;
-            margin: 20px 0;
-            display: none;
-        }
-        .pharmacy-list {
-            margin-top: 20px;
-            display: none;
-        }
-        .pharmacy-item {
-            padding: 10px;
-            border-bottom: 1px solid #eee;
-            cursor: pointer;
-        }
-        .pharmacy-item:hover {
-            background-color: #f5f5f5;
-        }
-        .container {
-            display: flex;
-            flex-wrap: wrap;
-            gap: 20px;
-        }
-        .map-container {
-            flex: 2;
-        }
-        .form-container {
-            flex: 1;
-        }
-        .results-container {
-            flex: 1 1 100%;
-            margin-top: 20px;
-        }
-        .form-group input[disabled] {
-            background-color: #f5f5f5;
-            cursor: not-allowed;
-        }
-        .autocomplete-container {
-            position: relative;
-        }
-        .autocomplete-list {
-            position: absolute;
-            top: 100%;
-            left: 0;
-            right: 0;
-            background: white;
-            border: 1px solid #ddd;
-            border-radius: 4px;
-            max-height: 200px;
-            overflow-y: auto;
-            z-index: 1000;
-            display: none;
-        }
-        .autocomplete-item {
-            padding: 8px 12px;
-            cursor: pointer;
-        }
-        .autocomplete-item:hover {
-            background-color: #f5f5f5;
-        }
-        .selected {
-            background-color: #e9ecef;
-        }
-        .pharmacy-table {
-            width: 100%;
-            border-collapse: collapse;
-            margin-top: 10px;
-        }
-        .pharmacy-table th,
-        .pharmacy-table td {
-            padding: 8px;
-            text-align: left;
-            border-bottom: 1px solid #ddd;
-        }
-        .pharmacy-table th {
-            background-color: #f5f5f5;
-            font-weight: bold;
-        }
-        .pharmacy-row {
-            cursor: pointer;
-        }
-        .pharmacy-row:hover,
-        .pharmacy-row.highlighted {
-            background-color: #f5f5f5;
-        }
-        .pharmacy-table td:first-child {
-            width: 40px;
-        }
-        .button-group {
-            display: flex;
-            gap: 10px;
-        }
-        #quickTest {
-            background-color: #2196F3;
-        }
-        #quickTest:hover {
-            background-color: #1976D2;
-        }
-        .status-lozenge {
-            padding: 4px 8px;
-            border-radius: 12px;
-            font-size: 12px;
-            font-weight: 500;
-            text-align: center;
-            white-space: nowrap;
-        }
-        .status-to-check {
-            background-color: #E0E0E0;
-            color: #616161;
-        }
-        .status-checking {
-            background-color: #2196F3;
-            color: white;
-        }
-        .status-in-stock {
-            background-color: #4CAF50;
-            color: white;
-        }
-        .status-out-of-stock {
-            background-color: #F44336;
-            color: white;
-        }
-        .call-button {
-            padding: 4px 8px;
-            background-color: #4CAF50;
-            color: white;
-            border: none;
-            border-radius: 4px;
-            cursor: pointer;
-        }
-        .call-button:hover {
-            background-color: #45a049;
-        }
-        .call-button:disabled {
-            background-color: #cccccc;
-            cursor: not-allowed;
-        }
-        .header {
-            display: none;
-            align-items: center;
-            gap: 15px;
-            margin-bottom: 20px;
-        }
-        .logo {
-            height: 50px;
-            width: auto;
-        }
-        .initial-logo {
-            width: 100%;
-            height: 400px;
-            object-fit: contain;
-            padding: 20px;
-            box-sizing: border-box;
-        }
+
     </style>
 </head>
 <body>
-    <div class="header">
+    <div class="header hidden">
         <img src="/images/logo.png" alt="Pill Patrol Logo" class="logo">
         <h1>Pill Patrol</h1>
+
+        <ul>
+            <li>
+                <a href="/availability">Inventory</a>
+            </li>
+        </ul>
     </div>
     <div class="container">
         <div class="form-container">
@@ -265,4 +75,4 @@
         </div>
     </div>
 </body>
-</html> 
+</html>

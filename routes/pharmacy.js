@@ -194,7 +194,7 @@ export default async function pharmacyRoutes(fastify) {
     }
   });
 
-  // Add new endpoint to get nearby pharmacies
+  // Update the nearby-pharmacies endpoint
   fastify.post("/nearby-pharmacies", async (request, reply) => {
     const { location } = request.body;
 
@@ -216,8 +216,7 @@ export default async function pharmacyRoutes(fastify) {
       });
 
       const pharmacies = await Promise.all(response.data.results
-        .slice(0, 10)
-        .map(async (place, index) => {
+        .map(async (place) => {
           // Get detailed place information including phone number
           const details = await mapsClient.placeDetails({
             params: {
@@ -227,6 +226,14 @@ export default async function pharmacyRoutes(fastify) {
             }
           });
 
+          // Calculate distance using Haversine formula
+          const distance = calculateDistance(
+            location.lat,
+            location.lng,
+            place.geometry.location.lat,
+            place.geometry.location.lng
+          );
+
           return {
             id: place.place_id,
             name: place.name,
@@ -235,13 +242,22 @@ export default async function pharmacyRoutes(fastify) {
             rating: place.rating,
             userRatingsTotal: place.user_ratings_total,
             phoneNumber: details.data.result.formatted_phone_number,
-            index: index + 1
+            distance: distance // Add distance to the pharmacy object
           };
+        }));
+
+      // Sort pharmacies by distance and take top 10
+      const sortedPharmacies = pharmacies
+        .sort((a, b) => a.distance - b.distance)
+        .slice(0, 10) // Limit to top 10 closest pharmacies
+        .map((pharmacy, index) => ({
+          ...pharmacy,
+          index: index + 1 // Re-index after sorting
         }));
 
       return reply.send({
         success: true,
-        data: pharmacies
+        data: sortedPharmacies
       });
     } catch (error) {
       console.error("Error finding nearby pharmacies:", error);
